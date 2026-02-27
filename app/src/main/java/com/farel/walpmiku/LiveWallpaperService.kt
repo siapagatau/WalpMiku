@@ -1,7 +1,10 @@
 package com.farel.walpmiku
 
+import android.content.Intent
+import android.content.IntentFilter
 import android.graphics.*
 import android.net.Uri
+import android.os.BatteryManager
 import android.os.Handler
 import android.os.Looper
 import android.service.wallpaper.WallpaperService
@@ -17,9 +20,12 @@ class LiveWallpaperService : WallpaperService() {
 
         private val handler = Handler(Looper.getMainLooper())
         private var backgroundBitmap: Bitmap? = null
+        private var batteryLevel: Int = 0
+        private var isCharging: Boolean = false
 
         private val updateTime = object : Runnable {
             override fun run() {
+                updateBatteryInfo()
                 drawFrame()
                 handler.postDelayed(this, 1000)
             }
@@ -39,6 +45,20 @@ class LiveWallpaperService : WallpaperService() {
             handler.removeCallbacks(updateTime)
             backgroundBitmap?.recycle()
             backgroundBitmap = null
+        }
+
+        private fun updateBatteryInfo() {
+            val batteryStatus: Intent? = applicationContext.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+            batteryLevel = batteryStatus?.let { intent ->
+                val level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
+                val scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, -1)
+                (level * 100 / scale.toFloat()).toInt()
+            } ?: 0
+
+            isCharging = batteryStatus?.let { intent ->
+                val status = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1)
+                status == BatteryManager.BATTERY_STATUS_CHARGING || status == BatteryManager.BATTERY_STATUS_FULL
+            } ?: false
         }
 
         private fun loadBackground() {
@@ -120,16 +140,17 @@ class LiveWallpaperService : WallpaperService() {
 
         private fun parseLine(line: String): String {
             var result = line
-            result = result.replace(Regex("#date", RegexOption.IGNORE_CASE)) {
-                SimpleDateFormat("dd MMM yyyy", Locale("id")).format(Date())
-            }
-            result = result.replace(Regex("#time", RegexOption.IGNORE_CASE)) {
-                SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
-            }
-            result = result.replace(Regex("#day", RegexOption.IGNORE_CASE)) {
-                SimpleDateFormat("EEEE", Locale("id")).format(Date())
-            }
-            result = result.replace(Regex("@(\\w+)")) {
+            val dateNow = SimpleDateFormat("dd MMM yyyy", Locale("id")).format(Date())
+            val timeNow = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
+            val dayNow = SimpleDateFormat("EEEE", Locale("id")).format(Date())
+            val batteryText = "$batteryLevel% ${if (isCharging) "(charging)" else ""}".trim()
+
+            result = result.replace(Regex("#date", RegexOption.IGNORE_CASE), dateNow)
+            result = result.replace(Regex("#time", RegexOption.IGNORE_CASE), timeNow)
+            result = result.replace(Regex("#day", RegexOption.IGNORE_CASE), dayNow)
+            result = result.replace(Regex("#battery", RegexOption.IGNORE_CASE), batteryText)
+            result = result.replace(Regex("#charging", RegexOption.IGNORE_CASE), if (isCharging) "Charging" else "Not charging")
+            result = result.replace(Regex("@(\\w+)", RegexOption.IGNORE_CASE)) {
                 it.groupValues[1]
             }
             return result
