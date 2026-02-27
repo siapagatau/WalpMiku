@@ -78,7 +78,7 @@ class LiveWallpaperService : WallpaperService() {
                         val original = BitmapFactory.decodeStream(input)
                         original?.let { bmp ->
                             // Center crop
-                            val scale = max(width.toFloat() / bmp.width, height.toFloat() / bmp.height)
+                            val scale = (width.toFloat() / bmp.width).coerceAtLeast(height.toFloat() / bmp.height)
                             val scaledWidth = (bmp.width * scale).toInt()
                             val scaledHeight = (bmp.height * scale).toInt()
                             val scaledBitmap = Bitmap.createScaledBitmap(bmp, scaledWidth, scaledHeight, true)
