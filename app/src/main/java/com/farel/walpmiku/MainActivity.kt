@@ -30,7 +30,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnPickTextColor: Button
     private lateinit var btnPickBgColor: Button
     private lateinit var btnPickFromGallery: Button
-    private lateinit var btnRemoveBackground: Button  // Tombol hapus
+    private lateinit var btnRemoveBackground: Button  // Tombol baru
 
     private var textColor = Color.GREEN
     private var bgColor = Color.BLACK
@@ -78,7 +78,7 @@ class MainActivity : AppCompatActivity() {
         btnPickTextColor = findViewById(R.id.btn_text_color)
         btnPickBgColor = findViewById(R.id.btn_bg_color)
         btnPickFromGallery = findViewById(R.id.btn_pick_from_gallery)
-        btnRemoveBackground = findViewById(R.id.btn_remove_background)  // Inisialisasi
+        btnRemoveBackground = findViewById(R.id.btn_remove_background)
 
         val prefs = getSharedPreferences("wallpaper_prefs", MODE_PRIVATE)
         textColor = prefs.getInt("text_color", Color.GREEN)
@@ -90,8 +90,11 @@ class MainActivity : AppCompatActivity() {
 
         offsetX = prefs.getInt("offset_x", 0)
         offsetY = prefs.getInt("offset_y", 0)
-        seekBarOffsetX.progress = offsetX + 100
-        seekBarOffsetY.progress = offsetY + 100
+        // SeekBar range 0..400, tengah 200 -> offset -200..200
+        seekBarOffsetX.max = 400
+        seekBarOffsetY.max = 400
+        seekBarOffsetX.progress = offsetX + 200
+        seekBarOffsetY.progress = offsetY + 200
 
         val uriString = prefs.getString("background_image_uri", null)
         selectedImageUri = if (uriString != null) Uri.parse(uriString) else null
@@ -127,7 +130,7 @@ class MainActivity : AppCompatActivity() {
 
         seekBarOffsetX.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                offsetX = progress - 100
+                offsetX = progress - 200
                 previewView.setOffset(offsetX, offsetY)
                 savePrefs()
             }
@@ -137,7 +140,7 @@ class MainActivity : AppCompatActivity() {
 
         seekBarOffsetY.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                offsetY = progress - 100
+                offsetY = progress - 200
                 previewView.setOffset(offsetX, offsetY)
                 savePrefs()
             }
