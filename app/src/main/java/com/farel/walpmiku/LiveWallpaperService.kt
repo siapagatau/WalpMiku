@@ -73,73 +73,69 @@ class LiveWallpaperService : WallpaperService() {
             }
         }
 
-        private fun drawTerminal(canvas: Canvas) {
-            val width = surfaceHolder.surfaceFrame.width()
-            val height = surfaceHolder.surfaceFrame.height()
-            if (width <= 0 || height <= 0) return
+private fun drawTerminal(canvas: Canvas) {
+    val width = surfaceHolder.surfaceFrame.width()
+    val height = surfaceHolder.surfaceFrame.height()
+    if (width <= 0 || height <= 0) return
 
-            val prefs = getSharedPreferences("wallpaper_prefs", MODE_PRIVATE)
-            val bgColor = prefs.getInt("bg_color", Color.BLACK)
-            val textColor = prefs.getInt("text_color", Color.GREEN)
-            val fontSize = prefs.getInt("font_size", 48)
-            val customText = prefs.getString("custom_text", "Hello, World!") ?: "Hello, World!"
-            val imageUriString = prefs.getString("background_image_uri", null)
+    val prefs = getSharedPreferences("wallpaper_prefs", MODE_PRIVATE)
+    val bgColor = prefs.getInt("bg_color", Color.BLACK)
+    val textColor = prefs.getInt("text_color", Color.WHITE)
+    val fontSize = prefs.getInt("font_size", 80)
+    val customText = prefs.getString("custom_text", "Hello") ?: "Hello"
+    val imageUriString = prefs.getString("background_image_uri", null)
 
-            // 1. Gambar background (foto jika ada)
-            if (imageUriString != null) {
-                try {
-                    val imageUri = Uri.parse(imageUriString)
-                    contentResolver.openInputStream(imageUri)?.use { inputStream ->
-                        val options = BitmapFactory.Options().apply { inSampleSize = 2 }
-                        val originalBitmap = BitmapFactory.decodeStream(inputStream, null, options)
-                        originalBitmap?.let { bmp ->
-                            val scaledBitmap = Bitmap.createScaledBitmap(bmp, width, height, true)
-                            canvas.drawBitmap(scaledBitmap, 0f, 0f, null)
-                            scaledBitmap.recycle()
-                        }
-                    }
-                } catch (e: Exception) {
-                    canvas.drawColor(bgColor)
+    // ===== BACKGROUND =====
+    if (imageUriString != null) {
+        try {
+            val imageUri = Uri.parse(imageUriString)
+            contentResolver.openInputStream(imageUri)?.use { inputStream ->
+                val originalBitmap = BitmapFactory.decodeStream(inputStream)
+                originalBitmap?.let { bmp ->
+                    val scaledBitmap = Bitmap.createScaledBitmap(bmp, width, height, true)
+                    canvas.drawBitmap(scaledBitmap, 0f, 0f, null)
+
+                    // overlay gelap biar teks kebaca
+                    val overlayPaint = Paint()
+                    overlayPaint.color = Color.argb(120, 0, 0, 0)
+                    canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), overlayPaint)
+
+                    scaledBitmap.recycle()
                 }
-            } else {
-                canvas.drawColor(bgColor)
             }
-
-            // 2. Gambar elemen terminal
-            val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                color = textColor
-                textSize = fontSize.toFloat()
-                typeface = Typeface.MONOSPACE
-                textAlign = Paint.Align.CENTER
-            }
-
-            val currentTime = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
-            val timeX = width / 2f
-            val timeY = height / 3f
-            canvas.drawText(currentTime, timeX, timeY, paint)
-
-            val customY = height / 2f
-            canvas.drawText(customText, timeX, customY, paint)
-
-            val prompt = "$ "
-            val promptY = customY + fontSize * 1.5f
-            paint.textSize = fontSize * 0.8f
-            canvas.drawText(prompt, timeX, promptY, paint)
-
-            val showCursor = (System.currentTimeMillis() / 500) % 2 == 0L
-            if (showCursor) {
-                val promptWidth = paint.measureText(prompt)
-                val cursorX = timeX + promptWidth / 2 + 10
-                val cursorY = promptY - paint.textSize * 0.2f
-                paint.style = Paint.Style.FILL
-                paint.color = textColor
-                canvas.drawRect(cursorX, cursorY, cursorX + 20, cursorY + paint.textSize * 0.8f, paint)
-            }
-
-            // 3. Scanline
-            paint.style = Paint.Style.FILL
-            paint.color = Color.argb(50, 255, 255, 255)
-            canvas.drawRect(0f, scanlineY, width.toFloat(), scanlineY + 2, paint)
+        } catch (e: Exception) {
+            canvas.drawColor(bgColor)
         }
+    } else {
+        canvas.drawColor(bgColor)
+    }
+
+    // ===== JAM =====
+    val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
+    val currentTime = timeFormat.format(Date())
+
+    val timePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = textColor
+        textSize = fontSize.toFloat()
+        typeface = Typeface.create(Typeface.SANS_SERIF, Typeface.BOLD)
+        textAlign = Paint.Align.CENTER
+        setShadowLayer(15f, 0f, 0f, Color.BLACK)
+    }
+
+    val timeX = width / 2f
+    val timeY = height / 2f
+    canvas.drawText(currentTime, timeX, timeY, timePaint)
+
+    // ===== TEXT CUSTOM =====
+    val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = textColor
+        textSize = fontSize * 0.35f
+        typeface = Typeface.create(Typeface.SANS_SERIF, Typeface.NORMAL)
+        textAlign = Paint.Align.CENTER
+        setShadowLayer(10f, 0f, 0f, Color.BLACK)
+    }
+
+    canvas.drawText(customText, timeX, timeY + fontSize * 0.8f, textPaint)
+}
     }
 }
