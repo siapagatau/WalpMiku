@@ -66,13 +66,23 @@
         android:textColor="#FFF"
         android:layout_marginTop="16dp"/>
 
-    <SeekBar
-        android:id="@+id/seekbar_offset_x"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:max="200"
-        android:progress="100"
-        android:progressTint="#4CAF50"/>
+<!-- Ganti SeekBar offset dengan max 400, progress 200 -->
+<SeekBar
+    android:id="@+id/seekbar_offset_x"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:max="400"
+    android:progress="200"
+    android:progressTint="#4CAF50"/>
+
+<!-- Tombol hapus gambar, letakkan setelah tombol galeri -->
+<com.google.android.material.button.MaterialButton
+    android:id="@+id/btn_clear_image"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:text="Hapus Gambar"
+    android:layout_marginTop="8dp"
+    style="@style/Widget.Material3.Button.OutlinedButton"/>
 
     <TextView
         android:layout_width="wrap_content"
@@ -81,13 +91,13 @@
         android:textColor="#FFF"
         android:layout_marginTop="8dp"/>
 
-    <SeekBar
-        android:id="@+id/seekbar_offset_y"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:max="200"
-        android:progress="100"
-        android:progressTint="#4CAF50"/>
+<SeekBar
+    android:id="@+id/seekbar_offset_y"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:max="400"
+    android:progress="200"
+    android:progressTint="#4CAF50"/>
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btn_text_color"
