@@ -17,6 +17,8 @@ class PreviewView @JvmOverloads constructor(
     private var fontSize = 48
     private var customText = "Hello, World!"
     private var backgroundImageUri: Uri? = null
+    private var offsetX = 0
+    private var offsetY = 0
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
 
     fun setColors(textColor: Int, bgColor: Int, fontSize: Int, customText: String) {
@@ -32,6 +34,7 @@ class PreviewView @JvmOverloads constructor(
     fun updateTextColor(color: Int) { textColor = color; invalidate() }
     fun updateBgColor(color: Int) { bgColor = color; invalidate() }
     fun setBackgroundImage(uri: Uri?) { backgroundImageUri = uri; invalidate() }
+    fun setOffset(x: Int, y: Int) { offsetX = x; offsetY = y; invalidate() }
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
@@ -39,16 +42,16 @@ class PreviewView @JvmOverloads constructor(
         val height = height
         if (width == 0 || height == 0) return
 
-        // Gambar background (foto jika ada)
+        // Background
         if (backgroundImageUri != null) {
             try {
-                context.contentResolver.openInputStream(backgroundImageUri!!)?.use { inputStream ->
-                    val options = BitmapFactory.Options().apply { inSampleSize = 2 }
-                    val originalBitmap = BitmapFactory.decodeStream(inputStream, null, options)
-                    originalBitmap?.let { bmp ->
-                        val scaledBitmap = Bitmap.createScaledBitmap(bmp, width, height, true)
-                        canvas.drawBitmap(scaledBitmap, 0f, 0f, null)
-                        scaledBitmap.recycle()
+                context.contentResolver.openInputStream(backgroundImageUri!!)?.use { input ->
+                    val original = BitmapFactory.decodeStream(input)
+                    original?.let {
+                        val scaled = Bitmap.createScaledBitmap(it, width, height, true)
+                        canvas.drawBitmap(scaled, 0f, 0f, null)
+                        scaled.recycle()
+                        it.recycle()
                     }
                 }
             } catch (e: Exception) {
@@ -58,38 +61,56 @@ class PreviewView @JvmOverloads constructor(
             canvas.drawColor(bgColor)
         }
 
-        // Teks terminal
+        drawTerminalContent(canvas, width, height)
+    }
+
+    private fun drawTerminalContent(canvas: Canvas, width: Int, height: Int) {
         paint.color = textColor
         paint.textSize = fontSize.toFloat()
         paint.typeface = Typeface.MONOSPACE
         paint.textAlign = Paint.Align.CENTER
 
-        val currentTime = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
-        val timeX = width / 2f
-        val timeY = height / 3f
-        canvas.drawText(currentTime, timeX, timeY, paint)
+        val centerX = width / 2f + offsetX
+        val centerY = height / 2f + offsetY
 
-        val customY = height / 2f
-        canvas.drawText(customText, timeX, customY, paint)
+        val lines = customText.split("\n")
+        var yPos = centerY
+        for (line in lines) {
+            val displayText = parseLine(line)
+            canvas.drawText(displayText, centerX, yPos, paint)
+            yPos += fontSize * 1.2f
+        }
 
+        // Prompt
         val prompt = "$ "
-        val promptY = customY + fontSize * 1.5f
+        val promptY = yPos + fontSize * 0.3f
         paint.textSize = fontSize * 0.8f
-        canvas.drawText(prompt, timeX, promptY, paint)
+        canvas.drawText(prompt, centerX, promptY, paint)
 
+        // Kursor berkedip
         val showCursor = (System.currentTimeMillis() / 500) % 2 == 0L
         if (showCursor) {
             val promptWidth = paint.measureText(prompt)
-            val cursorX = timeX + promptWidth / 2 + 10
+            val cursorX = centerX + promptWidth / 2 + 10
             val cursorY = promptY - paint.textSize * 0.2f
             paint.style = Paint.Style.FILL
             paint.color = textColor
             canvas.drawRect(cursorX, cursorY, cursorX + 20, cursorY + paint.textSize * 0.8f, paint)
         }
 
-        // Scanline statis di pratinjau
+        // Scanline statis
         paint.style = Paint.Style.FILL
         paint.color = Color.argb(50, 255, 255, 255)
         canvas.drawRect(0f, height * 0.7f, width.toFloat(), height * 0.7f + 2, paint)
+    }
+
+    private fun parseLine(line: String): String {
+        return when {
+            line.startsWith("#date") -> SimpleDateFormat("dd MMM yyyy", Locale("id")).format(Date())
+            line.startsWith("#time") -> SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
+            line.startsWith("#day") -> SimpleDateFormat("EEEE", Locale("id")).format(Date())
+            line.startsWith("@") -> line.substring(1)
+            else -> line
+        }
     }
 }
