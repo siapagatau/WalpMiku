@@ -110,6 +110,15 @@
         android:text="Pilih Background dari Galeri"
         android:layout_marginTop="8dp"/>
 
+    <!-- Tombol Hapus Background -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btn_remove_background"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Hapus Background"
+        android:layout_marginTop="8dp"
+        android:backgroundTint="#F44336"/>
+
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btn_set_wallpaper"
         android:layout_width="match_parent"
