@@ -19,7 +19,7 @@ class LiveWallpaperService : WallpaperService() {
 
         private val updateScanline = object : Runnable {
             override fun run() {
-                val height = desiredHeight
+                val height = surfaceHolder.surfaceFrame.height()
                 if (height > 0) {
                     scanlineY += 5 * scanlineDirection
                     if (scanlineY >= height) {
@@ -30,14 +30,14 @@ class LiveWallpaperService : WallpaperService() {
                         scanlineDirection = 1
                     }
                 }
-                drawFrame()   // memicu penggambaran ulang
+                drawFrame()
                 handler.postDelayed(this, 50)
             }
         }
 
         private val updateTime = object : Runnable {
             override fun run() {
-                drawFrame()   // update setiap detik
+                drawFrame()
                 handler.postDelayed(this, 1000)
             }
         }
@@ -58,7 +58,7 @@ class LiveWallpaperService : WallpaperService() {
             handler.removeCallbacks(updateTime)
         }
 
-        override fun drawFrame() {
+        fun drawFrame() {
             val holder = surfaceHolder
             var canvas: Canvas? = null
             try {
@@ -74,8 +74,8 @@ class LiveWallpaperService : WallpaperService() {
         }
 
         private fun drawTerminal(canvas: Canvas) {
-            val width = desiredWidth
-            val height = desiredHeight
+            val width = surfaceHolder.surfaceFrame.width()
+            val height = surfaceHolder.surfaceFrame.height()
             if (width <= 0 || height <= 0) return
 
             val prefs = getSharedPreferences("wallpaper_prefs", MODE_PRIVATE)
@@ -92,10 +92,11 @@ class LiveWallpaperService : WallpaperService() {
                     contentResolver.openInputStream(imageUri)?.use { inputStream ->
                         val options = BitmapFactory.Options().apply { inSampleSize = 2 }
                         val originalBitmap = BitmapFactory.decodeStream(inputStream, null, options)
-                        val scaledBitmap = Bitmap.createScaledBitmap(originalBitmap, width, height, true)
-                        canvas.drawBitmap(scaledBitmap, 0f, 0f, null)
-                        originalBitmap.recycle()
-                        scaledBitmap.recycle()
+                        originalBitmap?.let { bmp ->
+                            val scaledBitmap = Bitmap.createScaledBitmap(bmp, width, height, true)
+                            canvas.drawBitmap(scaledBitmap, 0f, 0f, null)
+                            scaledBitmap.recycle()
+                        }
                     }
                 } catch (e: Exception) {
                     canvas.drawColor(bgColor)
