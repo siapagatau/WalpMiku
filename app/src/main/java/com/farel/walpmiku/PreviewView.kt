@@ -72,7 +72,7 @@ class PreviewView @JvmOverloads constructor(
                     val originalBitmap = BitmapFactory.decodeStream(inputStream)
                     originalBitmap?.let { bmp ->
                         // Hitung skala agar gambar menutupi seluruh canvas (center crop)
-                        val scale = max(width.toFloat() / bmp.width, height.toFloat() / bmp.height)
+                        val scale = (width.toFloat() / bmp.width).coerceAtLeast(height.toFloat() / bmp.height)
                         val scaledWidth = (bmp.width * scale).toInt()
                         val scaledHeight = (bmp.height * scale).toInt()
                         val scaledBitmap = Bitmap.createScaledBitmap(bmp, scaledWidth, scaledHeight, true)
