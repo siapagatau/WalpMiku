@@ -9,10 +9,10 @@ import android.view.ViewGroup
 import android.widget.*
 
 class ColorPickerDialog(
-    context: Context,
+    private val context: Context,
     private val currentColor: Int,
     private val onColorSelected: (Int) -> Unit
-) : AlertDialog.Builder(context) {
+) {
 
     private val colors = listOf(
         Color.BLACK, Color.WHITE, Color.RED, Color.GREEN, Color.BLUE,
@@ -21,21 +21,20 @@ class ColorPickerDialog(
         Color.parseColor("#009688"), Color.parseColor("#FFC107"), Color.parseColor("#795548")
     )
 
-    init {
-        setTitle("Choose Color")
+    fun show() {
+        val builder = AlertDialog.Builder(context)
+        builder.setTitle("Choose Color")
+
         val gridView = GridView(context).apply {
             numColumns = 4
             adapter = ColorAdapter(context, colors, currentColor)
         }
-        setView(gridView)
-        setNegativeButton("Cancel", null)
-    }
 
-    // Fungsi untuk menampilkan dialog dan menutupnya saat warna dipilih
-    fun showDialog() {
-        val dialog = create()
-        val gridView = dialog.findViewById<GridView>(android.R.id.list)
-        gridView?.onItemClickListener = AdapterView.OnItemClickListener { _, _, position, _ ->
+        builder.setView(gridView)
+        builder.setNegativeButton("Cancel", null)
+
+        val dialog = builder.create()
+        gridView.onItemClickListener = AdapterView.OnItemClickListener { _, _, position, _ ->
             onColorSelected(colors[position])
             dialog.dismiss()
         }
