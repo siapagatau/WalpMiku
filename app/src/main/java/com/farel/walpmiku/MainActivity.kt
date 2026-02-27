@@ -30,7 +30,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnPickTextColor: Button
     private lateinit var btnPickBgColor: Button
     private lateinit var btnPickFromGallery: Button
-    private lateinit var btnClearImage: Button  // Tombol hapus gambar
+    private lateinit var btnClearImage: Button
 
     private var textColor = Color.GREEN
     private var bgColor = Color.BLACK
@@ -78,7 +78,22 @@ class MainActivity : AppCompatActivity() {
         btnPickTextColor = findViewById(R.id.btn_text_color)
         btnPickBgColor = findViewById(R.id.btn_bg_color)
         btnPickFromGallery = findViewById(R.id.btn_pick_from_gallery)
-        btnClearImage = findViewById(R.id.btn_clear_image)   // ID sesuai layout
+        btnClearImage = findViewById(R.id.btn_clear_image)
+
+        // Sesuaikan tinggi preview dengan rasio layar perangkat
+        previewView.post {
+            val previewWidth = previewView.width
+            if (previewWidth > 0) {
+                val displayMetrics = resources.displayMetrics
+                val screenHeight = displayMetrics.heightPixels
+                val screenWidth = displayMetrics.widthPixels
+                val ratio = screenHeight.toFloat() / screenWidth.toFloat()
+                val desiredHeight = (previewWidth * ratio).toInt()
+                val layoutParams = previewView.layoutParams
+                layoutParams.height = desiredHeight
+                previewView.layoutParams = layoutParams
+            }
+        }
 
         val prefs = getSharedPreferences("wallpaper_prefs", MODE_PRIVATE)
         textColor = prefs.getInt("text_color", Color.GREEN)
@@ -179,7 +194,6 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // Tombol hapus gambar
         btnClearImage.setOnClickListener {
             selectedImageUri = null
             previewView.setBackgroundImage(null)
