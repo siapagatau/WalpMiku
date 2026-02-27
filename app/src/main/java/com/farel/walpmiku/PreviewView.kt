@@ -61,10 +61,7 @@ class PreviewView @JvmOverloads constructor(
             canvas.drawColor(bgColor)
         }
 
-        drawTerminalContent(canvas, width, height)
-    }
-
-    private fun drawTerminalContent(canvas: Canvas, width: Int, height: Int) {
+        // Teks
         paint.color = textColor
         paint.textSize = fontSize.toFloat()
         paint.typeface = Typeface.MONOSPACE
@@ -80,28 +77,6 @@ class PreviewView @JvmOverloads constructor(
             canvas.drawText(displayText, centerX, yPos, paint)
             yPos += fontSize * 1.2f
         }
-
-        // Prompt
-        val prompt = "$ "
-        val promptY = yPos + fontSize * 0.3f
-        paint.textSize = fontSize * 0.8f
-        canvas.drawText(prompt, centerX, promptY, paint)
-
-        // Kursor berkedip
-        val showCursor = (System.currentTimeMillis() / 500) % 2 == 0L
-        if (showCursor) {
-            val promptWidth = paint.measureText(prompt)
-            val cursorX = centerX + promptWidth / 2 + 10
-            val cursorY = promptY - paint.textSize * 0.2f
-            paint.style = Paint.Style.FILL
-            paint.color = textColor
-            canvas.drawRect(cursorX, cursorY, cursorX + 20, cursorY + paint.textSize * 0.8f, paint)
-        }
-
-        // Scanline statis
-        paint.style = Paint.Style.FILL
-        paint.color = Color.argb(50, 255, 255, 255)
-        canvas.drawRect(0f, height * 0.7f, width.toFloat(), height * 0.7f + 2, paint)
     }
 
     private fun parseLine(line: String): String {
