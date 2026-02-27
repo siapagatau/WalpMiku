@@ -26,16 +26,21 @@ class ColorPickerDialog(
         val gridView = GridView(context).apply {
             numColumns = 4
             adapter = ColorAdapter(context, colors, currentColor)
-            onItemClickListener = AdapterView.OnItemClickListener { _, _, position, _ ->
-                onColorSelected(colors[position])
-                dismiss()
-            }
         }
         setView(gridView)
         setNegativeButton("Cancel", null)
     }
 
-    fun show() = create().show()
+    // Fungsi untuk menampilkan dialog dan menutupnya saat warna dipilih
+    fun showDialog() {
+        val dialog = create()
+        val gridView = dialog.findViewById<GridView>(android.R.id.list)
+        gridView?.onItemClickListener = AdapterView.OnItemClickListener { _, _, position, _ ->
+            onColorSelected(colors[position])
+            dialog.dismiss()
+        }
+        dialog.show()
+    }
 
     private class ColorAdapter(
         context: Context,
@@ -44,6 +49,7 @@ class ColorPickerDialog(
     ) : BaseAdapter() {
 
         private val inflater = LayoutInflater.from(context)
+        private val ctx = context
 
         override fun getCount(): Int = colors.size
         override fun getItem(position: Int): Any = colors[position]
@@ -54,8 +60,9 @@ class ColorPickerDialog(
             val colorView = view.findViewById<View>(R.id.color_view)
             val color = colors[position]
             colorView.setBackgroundColor(color)
+
             if (color == currentColor) {
-                colorView.background = context.getDrawable(R.drawable.color_selected_border)
+                colorView.background = ctx.getDrawable(R.drawable.color_selected_border)
             } else {
                 colorView.background = null
             }
