@@ -76,9 +76,18 @@ class LiveWallpaperService : WallpaperService() {
                     val uri = Uri.parse(uriString)
                     contentResolver.openInputStream(uri)?.use { input ->
                         val original = BitmapFactory.decodeStream(input)
-                        original?.let {
-                            backgroundBitmap = Bitmap.createScaledBitmap(it, width, height, true)
-                            it.recycle()
+                        original?.let { bmp ->
+                            // Center crop
+                            val scale = max(width.toFloat() / bmp.width, height.toFloat() / bmp.height)
+                            val scaledWidth = (bmp.width * scale).toInt()
+                            val scaledHeight = (bmp.height * scale).toInt()
+                            val scaledBitmap = Bitmap.createScaledBitmap(bmp, scaledWidth, scaledHeight, true)
+                            val left = (scaledWidth - width) / 2
+                            val top = (scaledHeight - height) / 2
+                            val croppedBitmap = Bitmap.createBitmap(scaledBitmap, left, top, width, height)
+                            backgroundBitmap = croppedBitmap
+                            scaledBitmap.recycle()
+                            bmp.recycle()
                         }
                     }
                 } catch (_: Exception) { }
