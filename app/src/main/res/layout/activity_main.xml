@@ -73,6 +73,13 @@
         android:layout_marginTop="8dp"/>
 
     <Button
+        android:id="@+id/btn_pick_from_gallery"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Pilih Background dari Galeri"
+        android:layout_marginTop="8dp"/>
+
+    <Button
         android:id="@+id/btn_set_wallpaper"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
