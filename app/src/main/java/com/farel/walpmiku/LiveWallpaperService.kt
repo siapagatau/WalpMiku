@@ -17,26 +17,6 @@ class LiveWallpaperService : WallpaperService() {
 
         private val handler = Handler(Looper.getMainLooper())
         private var backgroundBitmap: Bitmap? = null
-        private var scanlineY = 0f
-        private var scanlineDirection = 1
-
-        private val updateScanline = object : Runnable {
-            override fun run() {
-                val height = surfaceHolder.surfaceFrame.height()
-                if (height > 0) {
-                    scanlineY += 5 * scanlineDirection
-                    if (scanlineY >= height) {
-                        scanlineY = height.toFloat()
-                        scanlineDirection = -1
-                    } else if (scanlineY <= 0) {
-                        scanlineY = 0f
-                        scanlineDirection = 1
-                    }
-                }
-                drawFrame()
-                handler.postDelayed(this, 50)
-            }
-        }
 
         private val updateTime = object : Runnable {
             override fun run() {
@@ -48,17 +28,14 @@ class LiveWallpaperService : WallpaperService() {
         override fun onVisibilityChanged(visible: Boolean) {
             if (visible) {
                 loadBackground()
-                handler.post(updateScanline)
                 handler.post(updateTime)
             } else {
-                handler.removeCallbacks(updateScanline)
                 handler.removeCallbacks(updateTime)
             }
         }
 
         override fun onSurfaceDestroyed(holder: SurfaceHolder) {
             super.onSurfaceDestroyed(holder)
-            handler.removeCallbacks(updateScanline)
             handler.removeCallbacks(updateTime)
             backgroundBitmap?.recycle()
             backgroundBitmap = null
@@ -139,28 +116,6 @@ class LiveWallpaperService : WallpaperService() {
                 canvas.drawText(displayText, centerX, yPos, paint)
                 yPos += fontSize * 1.2f
             }
-
-            // Prompt
-            val prompt = "$ "
-            val promptY = yPos + fontSize * 0.3f
-            paint.textSize = fontSize * 0.8f
-            canvas.drawText(prompt, centerX, promptY, paint)
-
-            // Kursor
-            val showCursor = (System.currentTimeMillis() / 500) % 2 == 0L
-            if (showCursor) {
-                val promptWidth = paint.measureText(prompt)
-                val cursorX = centerX + promptWidth / 2 + 10
-                val cursorY = promptY - paint.textSize * 0.2f
-                paint.style = Paint.Style.FILL
-                paint.color = textColor
-                canvas.drawRect(cursorX, cursorY, cursorX + 20, cursorY + paint.textSize * 0.8f, paint)
-            }
-
-            // Scanline bergerak
-            paint.style = Paint.Style.FILL
-            paint.color = Color.argb(50, 255, 255, 255)
-            canvas.drawRect(0f, scanlineY, width.toFloat(), scanlineY + 2, paint)
         }
 
         private fun parseLine(line: String): String {
