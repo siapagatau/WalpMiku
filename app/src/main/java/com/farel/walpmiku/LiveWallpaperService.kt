@@ -10,32 +10,15 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 class LiveWallpaperService : WallpaperService() {
-    override fun onCreateEngine(): Engine = TerminalEngine()
 
-    inner class TerminalEngine : Engine() {
+    override fun onCreateEngine(): Engine = CleanEngine()
+
+    inner class CleanEngine : Engine() {
+
         private val handler = Handler(Looper.getMainLooper())
-        private var scanlineY = 0f
-        private var scanlineDirection = 1
+        private var backgroundBitmap: Bitmap? = null
 
-        private val updateScanline = object : Runnable {
-            override fun run() {
-                val height = surfaceHolder.surfaceFrame.height()
-                if (height > 0) {
-                    scanlineY += 5 * scanlineDirection
-                    if (scanlineY >= height) {
-                        scanlineY = height.toFloat()
-                        scanlineDirection = -1
-                    } else if (scanlineY <= 0) {
-                        scanlineY = 0f
-                        scanlineDirection = 1
-                    }
-                }
-                drawFrame()
-                handler.postDelayed(this, 50)
-            }
-        }
-
-        private val updateTime = object : Runnable {
+        private val updateTimeRunnable = object : Runnable {
             override fun run() {
                 drawFrame()
                 handler.postDelayed(this, 1000)
@@ -44,98 +27,114 @@ class LiveWallpaperService : WallpaperService() {
 
         override fun onVisibilityChanged(visible: Boolean) {
             if (visible) {
-                handler.post(updateScanline)
-                handler.post(updateTime)
+                loadBackground()
+                handler.post(updateTimeRunnable)
             } else {
-                handler.removeCallbacks(updateScanline)
-                handler.removeCallbacks(updateTime)
+                handler.removeCallbacks(updateTimeRunnable)
             }
         }
 
         override fun onSurfaceDestroyed(holder: SurfaceHolder) {
             super.onSurfaceDestroyed(holder)
-            handler.removeCallbacks(updateScanline)
-            handler.removeCallbacks(updateTime)
+            handler.removeCallbacks(updateTimeRunnable)
+            backgroundBitmap?.recycle()
+            backgroundBitmap = null
         }
 
-        fun drawFrame() {
+        private fun loadBackground() {
+            backgroundBitmap?.recycle()
+            backgroundBitmap = null
+
+            val prefs = getSharedPreferences("wallpaper_prefs", MODE_PRIVATE)
+            val imageUriString = prefs.getString("background_image_uri", null)
+            val width = surfaceHolder.surfaceFrame.width()
+            val height = surfaceHolder.surfaceFrame.height()
+
+            if (width <= 0 || height <= 0) return
+
+            if (imageUriString != null) {
+                try {
+                    val uri = Uri.parse(imageUriString)
+                    contentResolver.openInputStream(uri)?.use { input ->
+                        val original = BitmapFactory.decodeStream(input)
+                        original?.let {
+                            backgroundBitmap =
+                                Bitmap.createScaledBitmap(it, width, height, true)
+                            it.recycle()
+                        }
+                    }
+                } catch (_: Exception) {
+                }
+            }
+        }
+
+        private fun drawFrame() {
             val holder = surfaceHolder
             var canvas: Canvas? = null
             try {
                 canvas = holder.lockCanvas()
-                if (canvas != null) {
-                    drawTerminal(canvas)
-                }
+                canvas?.let { drawWallpaper(it) }
             } finally {
-                if (canvas != null) {
-                    holder.unlockCanvasAndPost(canvas)
-                }
+                canvas?.let { holder.unlockCanvasAndPost(it) }
             }
         }
 
-private fun drawTerminal(canvas: Canvas) {
-    val width = surfaceHolder.surfaceFrame.width()
-    val height = surfaceHolder.surfaceFrame.height()
-    if (width <= 0 || height <= 0) return
+        private fun drawWallpaper(canvas: Canvas) {
 
-    val prefs = getSharedPreferences("wallpaper_prefs", MODE_PRIVATE)
-    val bgColor = prefs.getInt("bg_color", Color.BLACK)
-    val textColor = prefs.getInt("text_color", Color.WHITE)
-    val fontSize = prefs.getInt("font_size", 80)
-    val customText = prefs.getString("custom_text", "Hello") ?: "Hello"
-    val imageUriString = prefs.getString("background_image_uri", null)
+            val width = canvas.width
+            val height = canvas.height
 
-    // ===== BACKGROUND =====
-    if (imageUriString != null) {
-        try {
-            val imageUri = Uri.parse(imageUriString)
-            contentResolver.openInputStream(imageUri)?.use { inputStream ->
-                val originalBitmap = BitmapFactory.decodeStream(inputStream)
-                originalBitmap?.let { bmp ->
-                    val scaledBitmap = Bitmap.createScaledBitmap(bmp, width, height, true)
-                    canvas.drawBitmap(scaledBitmap, 0f, 0f, null)
+            val prefs = getSharedPreferences("wallpaper_prefs", MODE_PRIVATE)
+            val bgColor = prefs.getInt("bg_color", Color.BLACK)
+            val textColor = prefs.getInt("text_color", Color.WHITE)
+            val fontSize = prefs.getInt("font_size", 100)
+            val customText = prefs.getString("custom_text", "Hello") ?: "Hello"
 
-                    // overlay gelap biar teks kebaca
-                    val overlayPaint = Paint()
-                    overlayPaint.color = Color.argb(120, 0, 0, 0)
-                    canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), overlayPaint)
+            // ===== BACKGROUND =====
+            if (backgroundBitmap != null) {
+                canvas.drawBitmap(backgroundBitmap!!, 0f, 0f, null)
 
-                    scaledBitmap.recycle()
+                // overlay biar teks kebaca
+                val overlayPaint = Paint().apply {
+                    color = Color.argb(130, 0, 0, 0)
                 }
+                canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), overlayPaint)
+
+            } else {
+                canvas.drawColor(bgColor)
             }
-        } catch (e: Exception) {
-            canvas.drawColor(bgColor)
+
+            // ===== TIME =====
+            val timeText = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
+
+            val timePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = textColor
+                textSize = fontSize.toFloat()
+                typeface = Typeface.create(Typeface.SANS_SERIF, Typeface.BOLD)
+                textAlign = Paint.Align.CENTER
+                setShadowLayer(20f, 0f, 0f, Color.BLACK)
+            }
+
+            val centerX = width / 2f
+            val centerY = height / 2f
+
+            canvas.drawText(timeText, centerX, centerY, timePaint)
+
+            // ===== CUSTOM TEXT =====
+            val customPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = textColor
+                textSize = fontSize * 0.35f
+                typeface = Typeface.create(Typeface.SANS_SERIF, Typeface.NORMAL)
+                textAlign = Paint.Align.CENTER
+                setShadowLayer(12f, 0f, 0f, Color.BLACK)
+            }
+
+            canvas.drawText(
+                customText,
+                centerX,
+                centerY + fontSize * 0.8f,
+                customPaint
+            )
         }
-    } else {
-        canvas.drawColor(bgColor)
-    }
-
-    // ===== JAM =====
-    val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
-    val currentTime = timeFormat.format(Date())
-
-    val timePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = textColor
-        textSize = fontSize.toFloat()
-        typeface = Typeface.create(Typeface.SANS_SERIF, Typeface.BOLD)
-        textAlign = Paint.Align.CENTER
-        setShadowLayer(15f, 0f, 0f, Color.BLACK)
-    }
-
-    val timeX = width / 2f
-    val timeY = height / 2f
-    canvas.drawText(currentTime, timeX, timeY, timePaint)
-
-    // ===== TEXT CUSTOM =====
-    val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = textColor
-        textSize = fontSize * 0.35f
-        typeface = Typeface.create(Typeface.SANS_SERIF, Typeface.NORMAL)
-        textAlign = Paint.Align.CENTER
-        setShadowLayer(10f, 0f, 0f, Color.BLACK)
-    }
-
-    canvas.drawText(customText, timeX, timeY + fontSize * 0.8f, textPaint)
-}
     }
 }
