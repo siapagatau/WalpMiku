@@ -24,6 +24,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var editText: EditText
     private lateinit var seekBarFont: SeekBar
     private lateinit var textFontSize: TextView
+    private lateinit var seekBarOffsetX: SeekBar
+    private lateinit var seekBarOffsetY: SeekBar
     private lateinit var btnSetWallpaper: Button
     private lateinit var btnPickTextColor: Button
     private lateinit var btnPickBgColor: Button
@@ -32,6 +34,8 @@ class MainActivity : AppCompatActivity() {
     private var textColor = Color.GREEN
     private var bgColor = Color.BLACK
     private var selectedImageUri: Uri? = null
+    private var offsetX = 0
+    private var offsetY = 0
 
     private val handler = Handler(Looper.getMainLooper())
     private val updateTimeRunnable = object : Runnable {
@@ -41,7 +45,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // Launcher untuk memilih gambar dari galeri
     private val pickImageLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) {
             selectedImageUri = uri
@@ -50,7 +53,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // Launcher untuk meminta izin penyimpanan
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted ->
@@ -69,6 +71,8 @@ class MainActivity : AppCompatActivity() {
         editText = findViewById(R.id.edit_custom_text)
         seekBarFont = findViewById(R.id.seekbar_font_size)
         textFontSize = findViewById(R.id.text_font_size)
+        seekBarOffsetX = findViewById(R.id.seekbar_offset_x)
+        seekBarOffsetY = findViewById(R.id.seekbar_offset_y)
         btnSetWallpaper = findViewById(R.id.btn_set_wallpaper)
         btnPickTextColor = findViewById(R.id.btn_text_color)
         btnPickBgColor = findViewById(R.id.btn_bg_color)
@@ -81,11 +85,24 @@ class MainActivity : AppCompatActivity() {
         val fontSize = prefs.getInt("font_size", 48)
         seekBarFont.progress = fontSize
         textFontSize.text = "Font size: $fontSize"
+
+        offsetX = prefs.getInt("offset_x", 0)
+        offsetY = prefs.getInt("offset_y", 0)
+        seekBarOffsetX.progress = offsetX + 100
+        seekBarOffsetY.progress = offsetY + 100
+
         val uriString = prefs.getString("background_image_uri", null)
         selectedImageUri = if (uriString != null) Uri.parse(uriString) else null
 
         previewView.setColors(textColor, bgColor, fontSize, editText.text.toString())
         previewView.setBackgroundImage(selectedImageUri)
+        previewView.setOffset(offsetX, offsetY)
+
+        // Update warna tombol
+        btnPickTextColor.setBackgroundColor(textColor)
+        btnPickTextColor.setTextColor(getContrastColor(textColor))
+        btnPickBgColor.setBackgroundColor(bgColor)
+        btnPickBgColor.setTextColor(getContrastColor(bgColor))
 
         editText.addTextChangedListener(object : TextWatcher {
             override fun afterTextChanged(s: Editable?) {
@@ -106,35 +123,45 @@ class MainActivity : AppCompatActivity() {
             override fun onStopTrackingTouch(seekBar: SeekBar?) {}
         })
 
-btnPickTextColor.setOnClickListener {
-    ColorPickerDialog(this, textColor) { color ->
-        textColor = color
-        previewView.updateTextColor(color)
+        seekBarOffsetX.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                offsetX = progress - 100
+                previewView.setOffset(offsetX, offsetY)
+                savePrefs()
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
 
-        btnPickTextColor.setBackgroundColor(color)
-        btnPickTextColor.setTextColor(getContrastColor(color))
+        seekBarOffsetY.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                offsetY = progress - 100
+                previewView.setOffset(offsetX, offsetY)
+                savePrefs()
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
 
-        savePrefs()
-    }.show()
-}
+        btnPickTextColor.setOnClickListener {
+            ColorPickerDialog(this, textColor) { color ->
+                textColor = color
+                previewView.updateTextColor(color)
+                btnPickTextColor.setBackgroundColor(color)
+                btnPickTextColor.setTextColor(getContrastColor(color))
+                savePrefs()
+            }.show()
+        }
 
-btnPickBgColor.setOnClickListener {
-    ColorPickerDialog(this, bgColor) { color ->
-        bgColor = color
-        previewView.updateBgColor(color)
-
-        btnPickBgColor.setBackgroundColor(color)
-        btnPickBgColor.setTextColor(getContrastColor(color))
-
-        savePrefs()
-    }.show()
-}
-
-btnPickTextColor.setBackgroundColor(textColor)
-btnPickTextColor.setTextColor(getContrastColor(textColor))
-
-btnPickBgColor.setBackgroundColor(bgColor)
-btnPickBgColor.setTextColor(getContrastColor(bgColor))
+        btnPickBgColor.setOnClickListener {
+            ColorPickerDialog(this, bgColor) { color ->
+                bgColor = color
+                previewView.updateBgColor(color)
+                btnPickBgColor.setBackgroundColor(color)
+                btnPickBgColor.setTextColor(getContrastColor(color))
+                savePrefs()
+            }.show()
+        }
 
         btnPickFromGallery.setOnClickListener {
             val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -168,20 +195,19 @@ btnPickBgColor.setTextColor(getContrastColor(bgColor))
         handler.removeCallbacks(updateTimeRunnable)
     }
 
-private fun getContrastColor(color: Int): Int {
-    val darkness =
-        1 - (0.299 * Color.red(color) +
-             0.587 * Color.green(color) +
-             0.114 * Color.blue(color)) / 255
-    return if (darkness < 0.5) Color.BLACK else Color.WHITE
-}
-    
+    private fun getContrastColor(color: Int): Int {
+        val darkness = 1 - (0.299 * Color.red(color) + 0.587 * Color.green(color) + 0.114 * Color.blue(color)) / 255
+        return if (darkness < 0.5) Color.BLACK else Color.WHITE
+    }
+
     private fun savePrefs() {
         getSharedPreferences("wallpaper_prefs", MODE_PRIVATE).edit().apply {
             putInt("text_color", textColor)
             putInt("bg_color", bgColor)
             putString("custom_text", editText.text.toString())
             putInt("font_size", seekBarFont.progress)
+            putInt("offset_x", offsetX)
+            putInt("offset_y", offsetY)
             putString("background_image_uri", selectedImageUri?.toString())
             apply()
         }
