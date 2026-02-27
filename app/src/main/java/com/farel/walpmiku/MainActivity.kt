@@ -1,18 +1,26 @@
 package com.farel.walpmiku
 
+import android.Manifest
+import android.app.Activity
+import android.app.WallpaperManager
 import android.content.ComponentName
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Color
+import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.app.WallpaperManager
+import android.provider.MediaStore
 import android.text.Editable
 import android.text.TextWatcher
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 
 class MainActivity : AppCompatActivity() {
+
     private lateinit var previewView: PreviewView
     private lateinit var editText: EditText
     private lateinit var seekBarFont: SeekBar
@@ -20,15 +28,23 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnSetWallpaper: Button
     private lateinit var btnPickTextColor: Button
     private lateinit var btnPickBgColor: Button
+    private lateinit var btnPickFromGallery: Button
 
     private var textColor = Color.GREEN
     private var bgColor = Color.BLACK
+    private var selectedImageUri: Uri? = null
+
     private val handler = Handler(Looper.getMainLooper())
     private val updateTimeRunnable = object : Runnable {
         override fun run() {
             previewView.invalidate()
             handler.postDelayed(this, 1000)
         }
+    }
+
+    companion object {
+        private const val PICK_IMAGE_REQUEST = 1
+        private const val PERMISSION_REQUEST_CODE = 100
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -42,6 +58,7 @@ class MainActivity : AppCompatActivity() {
         btnSetWallpaper = findViewById(R.id.btn_set_wallpaper)
         btnPickTextColor = findViewById(R.id.btn_text_color)
         btnPickBgColor = findViewById(R.id.btn_bg_color)
+        btnPickFromGallery = findViewById(R.id.btn_pick_from_gallery)
 
         val prefs = getSharedPreferences("wallpaper_prefs", MODE_PRIVATE)
         textColor = prefs.getInt("text_color", Color.GREEN)
@@ -50,11 +67,17 @@ class MainActivity : AppCompatActivity() {
         val fontSize = prefs.getInt("font_size", 48)
         seekBarFont.progress = fontSize
         textFontSize.text = "Font size: $fontSize"
+        val uriString = prefs.getString("background_image_uri", null)
+        selectedImageUri = if (uriString != null) Uri.parse(uriString) else null
 
         previewView.setColors(textColor, bgColor, fontSize, editText.text.toString())
+        previewView.setBackgroundImage(selectedImageUri)
 
         editText.addTextChangedListener(object : TextWatcher {
-            override fun afterTextChanged(s: Editable?) { savePrefs(); previewView.updateText(s.toString()) }
+            override fun afterTextChanged(s: Editable?) {
+                savePrefs()
+                previewView.updateText(s.toString())
+            }
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
         })
@@ -69,27 +92,68 @@ class MainActivity : AppCompatActivity() {
             override fun onStopTrackingTouch(seekBar: SeekBar?) {}
         })
 
-btnPickTextColor.setOnClickListener {
-    ColorPickerDialog(this, textColor) { color ->
-        textColor = color
-        previewView.updateTextColor(color)
-        savePrefs()
-    }.showDialog()   // ganti dari .show() menjadi .showDialog()
-}
+        btnPickTextColor.setOnClickListener {
+            ColorPickerDialog(this, textColor) { color ->
+                textColor = color
+                previewView.updateTextColor(color)
+                savePrefs()
+            }.show()
+        }
 
-btnPickBgColor.setOnClickListener {
-    ColorPickerDialog(this, bgColor) { color ->
-        bgColor = color
-        previewView.updateBgColor(color)
-        savePrefs()
-    }.showDialog()
-}
+        btnPickBgColor.setOnClickListener {
+            ColorPickerDialog(this, bgColor) { color ->
+                bgColor = color
+                previewView.updateBgColor(color)
+                savePrefs()
+            }.show()
+        }
+
+        btnPickFromGallery.setOnClickListener {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
+                == PackageManager.PERMISSION_GRANTED) {
+                openGallery()
+            } else {
+                ActivityCompat.requestPermissions(this,
+                    arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE),
+                    PERMISSION_REQUEST_CODE)
+            }
+        }
 
         btnSetWallpaper.setOnClickListener {
             val intent = Intent(WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER)
             intent.putExtra(WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT,
                 ComponentName(this, LiveWallpaperService::class.java))
             startActivity(intent)
+        }
+    }
+
+    private fun openGallery() {
+        val intent = Intent(Intent.ACTION_GET_CONTENT)
+        intent.type = "image/*"
+        startActivityForResult(intent, PICK_IMAGE_REQUEST)
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == PERMISSION_REQUEST_CODE && grantResults.isNotEmpty()
+            && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            openGallery()
+        } else {
+            Toast.makeText(this, "Izin diperlukan untuk memilih gambar", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == PICK_IMAGE_REQUEST && resultCode == Activity.RESULT_OK && data != null) {
+            selectedImageUri = data.data
+            previewView.setBackgroundImage(selectedImageUri)
+            savePrefs()
         }
     }
 
@@ -109,6 +173,7 @@ btnPickBgColor.setOnClickListener {
             putInt("bg_color", bgColor)
             putString("custom_text", editText.text.toString())
             putInt("font_size", seekBarFont.progress)
+            putString("background_image_uri", selectedImageUri?.toString())
             apply()
         }
     }
