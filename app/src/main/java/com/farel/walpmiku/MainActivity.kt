@@ -1,23 +1,22 @@
 package com.farel.walpmiku
 
 import android.Manifest
-import android.app.Activity
 import android.app.WallpaperManager
 import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.provider.MediaStore
 import android.text.Editable
 import android.text.TextWatcher
 import android.widget.*
+import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
 
 class MainActivity : AppCompatActivity() {
 
@@ -42,9 +41,24 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    companion object {
-        private const val PICK_IMAGE_REQUEST = 1
-        private const val PERMISSION_REQUEST_CODE = 100
+    // Launcher untuk memilih gambar dari galeri
+    private val pickImageLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) {
+            selectedImageUri = uri
+            previewView.setBackgroundImage(selectedImageUri)
+            savePrefs()
+        }
+    }
+
+    // Launcher untuk meminta izin penyimpanan
+    private val requestPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            pickImageLauncher.launch("image/*")
+        } else {
+            Toast.makeText(this, "Izin diperlukan untuk memilih gambar", Toast.LENGTH_SHORT).show()
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -109,13 +123,16 @@ class MainActivity : AppCompatActivity() {
         }
 
         btnPickFromGallery.setOnClickListener {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
-                == PackageManager.PERMISSION_GRANTED) {
-                openGallery()
+            val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                Manifest.permission.READ_MEDIA_IMAGES
             } else {
-                ActivityCompat.requestPermissions(this,
-                    arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE),
-                    PERMISSION_REQUEST_CODE)
+                Manifest.permission.READ_EXTERNAL_STORAGE
+            }
+
+            if (checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED) {
+                pickImageLauncher.launch("image/*")
+            } else {
+                requestPermissionLauncher.launch(permission)
             }
         }
 
@@ -124,36 +141,6 @@ class MainActivity : AppCompatActivity() {
             intent.putExtra(WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT,
                 ComponentName(this, LiveWallpaperService::class.java))
             startActivity(intent)
-        }
-    }
-
-    private fun openGallery() {
-        val intent = Intent(Intent.ACTION_GET_CONTENT)
-        intent.type = "image/*"
-        startActivityForResult(intent, PICK_IMAGE_REQUEST)
-    }
-
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<out String>,
-        grantResults: IntArray
-    ) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == PERMISSION_REQUEST_CODE && grantResults.isNotEmpty()
-            && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-            openGallery()
-        } else {
-            Toast.makeText(this, "Izin diperlukan untuk memilih gambar", Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    @Deprecated("Deprecated in Java")
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == PICK_IMAGE_REQUEST && resultCode == Activity.RESULT_OK && data != null) {
-            selectedImageUri = data.data
-            previewView.setBackgroundImage(selectedImageUri)
-            savePrefs()
         }
     }
 
