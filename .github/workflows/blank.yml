@@ -1,4 +1,4 @@
-name: Build Wallpaper Apk
+name: Build WalpMiku Apk
 on:
   push:
     branches: [ "main" ]
