@@ -8,6 +8,7 @@ import android.net.Uri
 import android.os.BatteryManager
 import android.util.AttributeSet
 import android.view.View
+import kotlin.math.max
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -72,7 +73,7 @@ class PreviewView @JvmOverloads constructor(
                     val originalBitmap = BitmapFactory.decodeStream(inputStream)
                     originalBitmap?.let { bmp ->
                         // Hitung skala agar gambar menutupi seluruh canvas (center crop)
-                        val scale = (width.toFloat() / bmp.width).coerceAtLeast(height.toFloat() / bmp.height)
+                        val scale = max(width.toFloat() / bmp.width, height.toFloat() / bmp.height)
                         val scaledWidth = (bmp.width * scale).toInt()
                         val scaledHeight = (bmp.height * scale).toInt()
                         val scaledBitmap = Bitmap.createScaledBitmap(bmp, scaledWidth, scaledHeight, true)
@@ -81,6 +82,14 @@ class PreviewView @JvmOverloads constructor(
                         val top = (scaledHeight - height) / 2
                         val croppedBitmap = Bitmap.createBitmap(scaledBitmap, left, top, width, height)
                         canvas.drawBitmap(croppedBitmap, 0f, 0f, null)
+
+                        // Tambahkan overlay gelap (fade) agar teks terbaca
+                        val overlayPaint = Paint().apply {
+                            color = Color.argb(100, 0, 0, 0) // alpha 100 (sekitar 40% gelap)
+                            style = Paint.Style.FILL
+                        }
+                        canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), overlayPaint)
+
                         croppedBitmap.recycle()
                         scaledBitmap.recycle()
                         bmp.recycle()
