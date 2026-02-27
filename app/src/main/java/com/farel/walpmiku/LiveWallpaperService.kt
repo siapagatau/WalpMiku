@@ -23,6 +23,7 @@ class LiveWallpaperService : WallpaperService() {
         private var backgroundBitmap: Bitmap? = null
         private var batteryLevel: Int = 0
         private var isCharging: Boolean = false
+        private var currentUriString: String? = null // menyimpan URI terakhir
 
         private val updateTime = object : Runnable {
             override fun run() {
@@ -34,7 +35,7 @@ class LiveWallpaperService : WallpaperService() {
 
         override fun onVisibilityChanged(visible: Boolean) {
             if (visible) {
-                loadBackground()
+                loadBackground() // muat ulang setiap kali terlihat
                 handler.post(updateTime)
             } else {
                 handler.removeCallbacks(updateTime)
@@ -44,8 +45,13 @@ class LiveWallpaperService : WallpaperService() {
         override fun onSurfaceDestroyed(holder: SurfaceHolder) {
             super.onSurfaceDestroyed(holder)
             handler.removeCallbacks(updateTime)
-            backgroundBitmap?.recycle()
-            backgroundBitmap = null
+            // Jangan recycle di sini – biarkan sampai benar‑benar diperlukan
+        }
+
+        override fun onSurfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
+            super.onSurfaceChanged(holder, format, width, height)
+            // Jika ukuran berubah, muat ulang background agar sesuai
+            loadBackground()
         }
 
         private fun updateBatteryInfo() {
@@ -63,35 +69,59 @@ class LiveWallpaperService : WallpaperService() {
         }
 
         private fun loadBackground() {
-            backgroundBitmap?.recycle()
-            backgroundBitmap = null
-
             val prefs = getSharedPreferences("wallpaper_prefs", MODE_PRIVATE)
             val uriString = prefs.getString("background_image_uri", null)
+
             val width = surfaceHolder.surfaceFrame.width()
             val height = surfaceHolder.surfaceFrame.height()
             if (width <= 0 || height <= 0) return
 
-            if (uriString != null) {
-                try {
-                    val uri = Uri.parse(uriString)
-                    contentResolver.openInputStream(uri)?.use { input ->
-                        val original = BitmapFactory.decodeStream(input)
-                        original?.let { bmp ->
-                            // Center crop
-                            val scale = max(width.toFloat() / bmp.width, height.toFloat() / bmp.height)
-                            val scaledWidth = (bmp.width * scale).toInt()
-                            val scaledHeight = (bmp.height * scale).toInt()
-                            val scaledBitmap = Bitmap.createScaledBitmap(bmp, scaledWidth, scaledHeight, true)
-                            val left = (scaledWidth - width) / 2
-                            val top = (scaledHeight - height) / 2
-                            val croppedBitmap = Bitmap.createBitmap(scaledBitmap, left, top, width, height)
-                            backgroundBitmap = croppedBitmap
-                            scaledBitmap.recycle()
-                            bmp.recycle()
-                        }
+            // Jika URI berubah atau null, hapus bitmap lama
+            if (currentUriString != uriString) {
+                backgroundBitmap?.recycle()
+                backgroundBitmap = null
+                currentUriString = uriString
+            }
+
+            // Jika tidak ada URI, langsung keluar
+            if (uriString == null) {
+                backgroundBitmap = null
+                return
+            }
+
+            // Jika bitmap sudah ada dan ukurannya cocok, tidak perlu muat ulang
+            if (backgroundBitmap != null &&
+                backgroundBitmap!!.width == width &&
+                backgroundBitmap!!.height == height) {
+                return
+            }
+
+            // Muat bitmap baru
+            try {
+                val uri = Uri.parse(uriString)
+                contentResolver.openInputStream(uri)?.use { input ->
+                    val original = BitmapFactory.decodeStream(input)
+                    original?.let { bmp ->
+                        // Center crop
+                        val scale = max(width.toFloat() / bmp.width, height.toFloat() / bmp.height)
+                        val scaledWidth = (bmp.width * scale).toInt()
+                        val scaledHeight = (bmp.height * scale).toInt()
+                        val scaledBitmap = Bitmap.createScaledBitmap(bmp, scaledWidth, scaledHeight, true)
+                        val left = (scaledWidth - width) / 2
+                        val top = (scaledHeight - height) / 2
+                        val croppedBitmap = Bitmap.createBitmap(scaledBitmap, left, top, width, height)
+
+                        // Ganti bitmap lama
+                        backgroundBitmap?.recycle()
+                        backgroundBitmap = croppedBitmap
+
+                        scaledBitmap.recycle()
+                        bmp.recycle()
                     }
-                } catch (_: Exception) { }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                backgroundBitmap = null
             }
         }
 
