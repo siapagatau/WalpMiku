@@ -1,10 +1,11 @@
 package com.farel.walpmiku
 
 import android.graphics.*
+import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.service.wallpaper.WallpaperService
-import android.text.format.DateFormat
+import android.view.SurfaceHolder
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -15,6 +16,7 @@ class LiveWallpaperService : WallpaperService() {
         private val handler = Handler(Looper.getMainLooper())
         private var scanlineY = 0f
         private var scanlineDirection = 1
+
         private val updateScanline = object : Runnable {
             override fun run() {
                 val height = desiredHeight
@@ -28,13 +30,14 @@ class LiveWallpaperService : WallpaperService() {
                         scanlineDirection = 1
                     }
                 }
-                drawFrame()
+                drawFrame()   // memicu penggambaran ulang
                 handler.postDelayed(this, 50)
             }
         }
+
         private val updateTime = object : Runnable {
             override fun run() {
-                drawFrame()
+                drawFrame()   // update setiap detik
                 handler.postDelayed(this, 1000)
             }
         }
@@ -49,13 +52,25 @@ class LiveWallpaperService : WallpaperService() {
             }
         }
 
-        override fun onSurfaceDestroyed(holder: SurfaceHolder?) {
+        override fun onSurfaceDestroyed(holder: SurfaceHolder) {
+            super.onSurfaceDestroyed(holder)
             handler.removeCallbacks(updateScanline)
             handler.removeCallbacks(updateTime)
         }
 
-        override fun onDraw(canvas: Canvas) {
-            drawTerminal(canvas)
+        override fun drawFrame() {
+            val holder = surfaceHolder
+            var canvas: Canvas? = null
+            try {
+                canvas = holder.lockCanvas()
+                if (canvas != null) {
+                    drawTerminal(canvas)
+                }
+            } finally {
+                if (canvas != null) {
+                    holder.unlockCanvasAndPost(canvas)
+                }
+            }
         }
 
         private fun drawTerminal(canvas: Canvas) {
@@ -68,34 +83,48 @@ class LiveWallpaperService : WallpaperService() {
             val textColor = prefs.getInt("text_color", Color.GREEN)
             val fontSize = prefs.getInt("font_size", 48)
             val customText = prefs.getString("custom_text", "Hello, World!") ?: "Hello, World!"
+            val imageUriString = prefs.getString("background_image_uri", null)
 
-            // Latar belakang
-            canvas.drawColor(bgColor)
+            // 1. Gambar background (foto jika ada)
+            if (imageUriString != null) {
+                try {
+                    val imageUri = Uri.parse(imageUriString)
+                    contentResolver.openInputStream(imageUri)?.use { inputStream ->
+                        val options = BitmapFactory.Options().apply { inSampleSize = 2 }
+                        val originalBitmap = BitmapFactory.decodeStream(inputStream, null, options)
+                        val scaledBitmap = Bitmap.createScaledBitmap(originalBitmap, width, height, true)
+                        canvas.drawBitmap(scaledBitmap, 0f, 0f, null)
+                        originalBitmap.recycle()
+                        scaledBitmap.recycle()
+                    }
+                } catch (e: Exception) {
+                    canvas.drawColor(bgColor)
+                }
+            } else {
+                canvas.drawColor(bgColor)
+            }
 
+            // 2. Gambar elemen terminal
             val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 color = textColor
                 textSize = fontSize.toFloat()
                 typeface = Typeface.MONOSPACE
+                textAlign = Paint.Align.CENTER
             }
 
-            // Waktu
             val currentTime = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
             val timeX = width / 2f
             val timeY = height / 3f
-            paint.textAlign = Paint.Align.CENTER
             canvas.drawText(currentTime, timeX, timeY, paint)
 
-            // Teks kustom
             val customY = height / 2f
             canvas.drawText(customText, timeX, customY, paint)
 
-            // Prompt "$ "
             val prompt = "$ "
             val promptY = customY + fontSize * 1.5f
             paint.textSize = fontSize * 0.8f
             canvas.drawText(prompt, timeX, promptY, paint)
 
-            // Kursor berkedip
             val showCursor = (System.currentTimeMillis() / 500) % 2 == 0L
             if (showCursor) {
                 val promptWidth = paint.measureText(prompt)
@@ -106,7 +135,7 @@ class LiveWallpaperService : WallpaperService() {
                 canvas.drawRect(cursorX, cursorY, cursorX + 20, cursorY + paint.textSize * 0.8f, paint)
             }
 
-            // Scanline bergerak
+            // 3. Scanline
             paint.style = Paint.Style.FILL
             paint.color = Color.argb(50, 255, 255, 255)
             canvas.drawRect(0f, scanlineY, width.toFloat(), scanlineY + 2, paint)
