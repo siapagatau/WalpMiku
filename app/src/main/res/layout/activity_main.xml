@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
@@ -11,27 +12,27 @@
         android:layout_height="200dp"
         android:layout_marginBottom="16dp"/>
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Custom Text"
-        android:textSize="16sp"
-        android:textColor="#FFF"/>
-
-    <EditText
-        android:id="@+id/edit_custom_text"
+    <com.google.android.material.textfield.TextInputLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="Enter text"
-        android:textColor="#FFF"
-        android:textColorHint="#AAA"
-        android:background="@android:drawable/editbox_background"/>
+        android:layout_marginTop="8dp"
+        style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/edit_custom_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Teks kustom (gunakan #date, #time, #day, @teks)"
+            android:textColor="#FFFFFF"
+            android:textColorHint="#AAAAAA"
+            android:inputType="textMultiLine"
+            android:minLines="3"/>
+    </com.google.android.material.textfield.TextInputLayout>
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Font Size"
-        android:textSize="16sp"
+        android:text="Ukuran Font"
         android:textColor="#FFF"
         android:layout_marginTop="16dp"/>
 
@@ -58,28 +59,58 @@
             android:layout_marginStart="8dp"/>
     </LinearLayout>
 
-    <Button
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Posisi Horizontal (X)"
+        android:textColor="#FFF"
+        android:layout_marginTop="16dp"/>
+
+    <SeekBar
+        android:id="@+id/seekbar_offset_x"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:max="200"
+        android:progress="100"
+        android:progressTint="#4CAF50"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Posisi Vertikal (Y)"
+        android:textColor="#FFF"
+        android:layout_marginTop="8dp"/>
+
+    <SeekBar
+        android:id="@+id/seekbar_offset_y"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:max="200"
+        android:progress="100"
+        android:progressTint="#4CAF50"/>
+
+    <com.google.android.material.button.MaterialButton
         android:id="@+id/btn_text_color"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Choose Text Color"
+        android:text="Pilih Warna Teks"
         android:layout_marginTop="16dp"/>
 
-    <Button
+    <com.google.android.material.button.MaterialButton
         android:id="@+id/btn_bg_color"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Choose Background Color"
+        android:text="Pilih Warna Latar"
         android:layout_marginTop="8dp"/>
 
-    <Button
+    <com.google.android.material.button.MaterialButton
         android:id="@+id/btn_pick_from_gallery"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="Pilih Background dari Galeri"
         android:layout_marginTop="8dp"/>
 
-    <Button
+    <com.google.android.material.button.MaterialButton
         android:id="@+id/btn_set_wallpaper"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
