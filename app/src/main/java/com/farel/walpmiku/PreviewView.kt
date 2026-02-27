@@ -1,8 +1,11 @@
 package com.farel.walpmiku
 
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.graphics.*
 import android.net.Uri
+import android.os.BatteryManager
 import android.util.AttributeSet
 import android.view.View
 import java.text.SimpleDateFormat
@@ -21,6 +24,10 @@ class PreviewView @JvmOverloads constructor(
     private var offsetY = 0
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
 
+    // Cache untuk baterai
+    private var batteryLevel: Int = 0
+    private var isCharging: Boolean = false
+
     fun setColors(textColor: Int, bgColor: Int, fontSize: Int, customText: String) {
         this.textColor = textColor
         this.bgColor = bgColor
@@ -36,11 +43,28 @@ class PreviewView @JvmOverloads constructor(
     fun setBackgroundImage(uri: Uri?) { backgroundImageUri = uri; invalidate() }
     fun setOffset(x: Int, y: Int) { offsetX = x; offsetY = y; invalidate() }
 
+    private fun updateBatteryInfo() {
+        val batteryStatus: Intent? = context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+        batteryLevel = batteryStatus?.let { intent ->
+            val level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
+            val scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, -1)
+            (level * 100 / scale.toFloat()).toInt()
+        } ?: 0
+
+        isCharging = batteryStatus?.let { intent ->
+            val status = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1)
+            status == BatteryManager.BATTERY_STATUS_CHARGING || status == BatteryManager.BATTERY_STATUS_FULL
+        } ?: false
+    }
+
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         val width = width
         val height = height
         if (width == 0 || height == 0) return
+
+        // Update baterai setiap kali draw (bisa di-optimasi, tapi cukup untuk preview)
+        updateBatteryInfo()
 
         // Background
         if (backgroundImageUri != null) {
@@ -81,21 +105,18 @@ class PreviewView @JvmOverloads constructor(
 
     private fun parseLine(line: String): String {
         var result = line
-        // Ganti #date (case insensitive) dengan tanggal
-        result = result.replace(Regex("#date", RegexOption.IGNORE_CASE)) {
-            SimpleDateFormat("dd MMM yyyy", Locale("id")).format(Date())
-        }
-        // Ganti #time dengan jam
-        result = result.replace(Regex("#time", RegexOption.IGNORE_CASE)) {
-            SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
-        }
-        // Ganti #day dengan nama hari
-        result = result.replace(Regex("#day", RegexOption.IGNORE_CASE)) {
-            SimpleDateFormat("EEEE", Locale("id")).format(Date())
-        }
-        // Ganti @teks (kata setelah @) dengan teks tersebut (tanpa @)
-        result = result.replace(Regex("@(\\w+)")) {
-            it.groupValues[1]  // hanya mengambil kata setelah @
+        val dateNow = SimpleDateFormat("dd MMM yyyy", Locale("id")).format(Date())
+        val timeNow = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
+        val dayNow = SimpleDateFormat("EEEE", Locale("id")).format(Date())
+        val batteryText = "$batteryLevel% ${if (isCharging) "(charging)" else ""}".trim()
+
+        result = result.replace(Regex("#date", RegexOption.IGNORE_CASE), dateNow)
+        result = result.replace(Regex("#time", RegexOption.IGNORE_CASE), timeNow)
+        result = result.replace(Regex("#day", RegexOption.IGNORE_CASE), dayNow)
+        result = result.replace(Regex("#battery", RegexOption.IGNORE_CASE), batteryText)
+        result = result.replace(Regex("#charging", RegexOption.IGNORE_CASE), if (isCharging) "Charging" else "Not charging")
+        result = result.replace(Regex("@(\\w+)", RegexOption.IGNORE_CASE)) {
+            it.groupValues[1]
         }
         return result
     }
