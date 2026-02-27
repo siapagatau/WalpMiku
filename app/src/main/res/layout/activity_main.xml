@@ -15,9 +15,9 @@
         <com.farel.walpmiku.PreviewView
             android:id="@+id/preview_view"
             android:layout_width="match_parent"
-            android:layout_height="350dp"   <!-- Lebih besar agar mudah dilihat -->
+            android:layout_height="350dp"
             android:layout_marginBottom="16dp"
-            android:background="#1E1E1E"/>
+            android:background="#1E1E1E" />
 
         <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"
@@ -34,7 +34,7 @@
                 android:textColorHint="#AAAAAA"
                 android:inputType="textMultiLine"
                 android:minLines="3"
-                android:maxLines="8"/>
+                android:maxLines="8" />
         </com.google.android.material.textfield.TextInputLayout>
 
         <TextView
@@ -42,7 +42,7 @@
             android:layout_height="wrap_content"
             android:text="Ukuran Font"
             android:textColor="#FFF"
-            android:layout_marginTop="16dp"/>
+            android:layout_marginTop="16dp" />
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -56,7 +56,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:max="100"
-                android:progress="48"/>
+                android:progress="48" />
 
             <TextView
                 android:id="@+id/text_font_size"
@@ -64,7 +64,7 @@
                 android:layout_height="wrap_content"
                 android:text="48"
                 android:textColor="#FFF"
-                android:layout_marginStart="8dp"/>
+                android:layout_marginStart="8dp" />
         </LinearLayout>
 
         <TextView
@@ -72,7 +72,7 @@
             android:layout_height="wrap_content"
             android:text="Posisi Horizontal (X)"
             android:textColor="#FFF"
-            android:layout_marginTop="16dp"/>
+            android:layout_marginTop="16dp" />
 
         <SeekBar
             android:id="@+id/seekbar_offset_x"
@@ -80,14 +80,14 @@
             android:layout_height="wrap_content"
             android:max="1000"
             android:progress="500"
-            android:progressTint="#4CAF50"/>
+            android:progressTint="#4CAF50" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Posisi Vertikal (Y)"
             android:textColor="#FFF"
-            android:layout_marginTop="8dp"/>
+            android:layout_marginTop="8dp" />
 
         <SeekBar
             android:id="@+id/seekbar_offset_y"
@@ -95,28 +95,28 @@
             android:layout_height="wrap_content"
             android:max="1000"
             android:progress="500"
-            android:progressTint="#4CAF50"/>
+            android:progressTint="#4CAF50" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_text_color"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Pilih Warna Teks"
-            android:layout_marginTop="16dp"/>
+            android:layout_marginTop="16dp" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_bg_color"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Pilih Warna Latar"
-            android:layout_marginTop="8dp"/>
+            android:layout_marginTop="8dp" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_pick_from_gallery"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Pilih Background dari Galeri"
-            android:layout_marginTop="8dp"/>
+            android:layout_marginTop="8dp" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_clear_image"
@@ -124,7 +124,7 @@
             android:layout_height="wrap_content"
             android:text="Hapus Background Gambar"
             android:backgroundTint="#F44336"
-            android:layout_marginTop="8dp"/>
+            android:layout_marginTop="8dp" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_set_wallpaper"
@@ -133,7 +133,7 @@
             android:text="Set Wallpaper"
             android:layout_marginTop="24dp"
             android:layout_marginBottom="16dp"
-            android:backgroundTint="#4CAF50"/>
+            android:backgroundTint="#4CAF50" />
 
     </LinearLayout>
 </ScrollView>
