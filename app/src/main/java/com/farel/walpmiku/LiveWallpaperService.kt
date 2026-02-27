@@ -9,6 +9,7 @@ import android.os.Handler
 import android.os.Looper
 import android.service.wallpaper.WallpaperService
 import android.view.SurfaceHolder
+import kotlin.math.max
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -78,7 +79,7 @@ class LiveWallpaperService : WallpaperService() {
                         val original = BitmapFactory.decodeStream(input)
                         original?.let { bmp ->
                             // Center crop
-                            val scale = (width.toFloat() / bmp.width).coerceAtLeast(height.toFloat() / bmp.height)
+                            val scale = max(width.toFloat() / bmp.width, height.toFloat() / bmp.height)
                             val scaledWidth = (bmp.width * scale).toInt()
                             val scaledHeight = (bmp.height * scale).toInt()
                             val scaledBitmap = Bitmap.createScaledBitmap(bmp, scaledWidth, scaledHeight, true)
