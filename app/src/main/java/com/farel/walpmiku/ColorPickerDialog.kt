@@ -3,6 +3,7 @@ package com.farel.walpmiku
 import android.app.AlertDialog
 import android.content.Context
 import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -23,7 +24,7 @@ class ColorPickerDialog(
 
     fun show() {
         val builder = AlertDialog.Builder(context)
-        builder.setTitle("Choose Color")
+        builder.setTitle("Pilih Warna")
 
         val gridView = GridView(context).apply {
             numColumns = 4
@@ -31,7 +32,7 @@ class ColorPickerDialog(
         }
 
         builder.setView(gridView)
-        builder.setNegativeButton("Cancel", null)
+        builder.setNegativeButton("Batal", null)
 
         val dialog = builder.create()
         gridView.onItemClickListener = AdapterView.OnItemClickListener { _, _, position, _ ->
@@ -48,7 +49,6 @@ class ColorPickerDialog(
     ) : BaseAdapter() {
 
         private val inflater = LayoutInflater.from(context)
-        private val ctx = context
 
         override fun getCount(): Int = colors.size
         override fun getItem(position: Int): Any = colors[position]
@@ -58,12 +58,23 @@ class ColorPickerDialog(
             val view = convertView ?: inflater.inflate(R.layout.item_color, parent, false)
             val colorView = view.findViewById<View>(R.id.color_view)
             val color = colors[position]
-            colorView.setBackgroundColor(color)
+
+            val drawable = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                setColor(color)
+                setStroke(2, Color.DKGRAY)
+                cornerRadius = 8f
+            }
+            colorView.background = drawable
 
             if (color == currentColor) {
-                colorView.background = ctx.getDrawable(R.drawable.color_selected_border)
-            } else {
-                colorView.background = null
+                val selectedDrawable = GradientDrawable().apply {
+                    shape = GradientDrawable.RECTANGLE
+                    setColor(color)
+                    setStroke(6, Color.WHITE)
+                    cornerRadius = 8f
+                }
+                colorView.background = selectedDrawable
             }
             return view
         }
