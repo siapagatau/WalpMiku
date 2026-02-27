@@ -69,21 +69,21 @@ class MainActivity : AppCompatActivity() {
             override fun onStopTrackingTouch(seekBar: SeekBar?) {}
         })
 
-        btnPickTextColor.setOnClickListener {
-            ColorPickerDialog(this, textColor) { color ->
-                textColor = color
-                previewView.updateTextColor(color)
-                savePrefs()
-            }.show()
-        }
+btnPickTextColor.setOnClickListener {
+    ColorPickerDialog(this, textColor) { color ->
+        textColor = color
+        previewView.updateTextColor(color)
+        savePrefs()
+    }.showDialog()   // ganti dari .show() menjadi .showDialog()
+}
 
-        btnPickBgColor.setOnClickListener {
-            ColorPickerDialog(this, bgColor) { color ->
-                bgColor = color
-                previewView.updateBgColor(color)
-                savePrefs()
-            }.show()
-        }
+btnPickBgColor.setOnClickListener {
+    ColorPickerDialog(this, bgColor) { color ->
+        bgColor = color
+        previewView.updateBgColor(color)
+        savePrefs()
+    }.showDialog()
+}
 
         btnSetWallpaper.setOnClickListener {
             val intent = Intent(WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER)
