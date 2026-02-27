@@ -24,7 +24,7 @@ class PreviewView @JvmOverloads constructor(
     private var offsetY = 0
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
 
-    // Cache untuk baterai
+    // Cache baterai
     private var batteryLevel: Int = 0
     private var isCharging: Boolean = false
 
@@ -63,19 +63,27 @@ class PreviewView @JvmOverloads constructor(
         val height = height
         if (width == 0 || height == 0) return
 
-        // Update baterai setiap kali draw (bisa di-optimasi, tapi cukup untuk preview)
         updateBatteryInfo()
 
-        // Background
+        // Background gambar (center-crop)
         if (backgroundImageUri != null) {
             try {
-                context.contentResolver.openInputStream(backgroundImageUri!!)?.use { input ->
-                    val original = BitmapFactory.decodeStream(input)
-                    original?.let {
-                        val scaled = Bitmap.createScaledBitmap(it, width, height, true)
-                        canvas.drawBitmap(scaled, 0f, 0f, null)
-                        scaled.recycle()
-                        it.recycle()
+                context.contentResolver.openInputStream(backgroundImageUri!!)?.use { inputStream ->
+                    val originalBitmap = BitmapFactory.decodeStream(inputStream)
+                    originalBitmap?.let { bmp ->
+                        // Hitung skala agar gambar menutupi seluruh canvas (center crop)
+                        val scale = max(width.toFloat() / bmp.width, height.toFloat() / bmp.height)
+                        val scaledWidth = (bmp.width * scale).toInt()
+                        val scaledHeight = (bmp.height * scale).toInt()
+                        val scaledBitmap = Bitmap.createScaledBitmap(bmp, scaledWidth, scaledHeight, true)
+                        // Potong bagian tengah agar sesuai ukuran canvas
+                        val left = (scaledWidth - width) / 2
+                        val top = (scaledHeight - height) / 2
+                        val croppedBitmap = Bitmap.createBitmap(scaledBitmap, left, top, width, height)
+                        canvas.drawBitmap(croppedBitmap, 0f, 0f, null)
+                        croppedBitmap.recycle()
+                        scaledBitmap.recycle()
+                        bmp.recycle()
                     }
                 }
             } catch (e: Exception) {
