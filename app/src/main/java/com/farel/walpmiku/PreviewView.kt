@@ -2,6 +2,7 @@ package com.farel.walpmiku
 
 import android.content.Context
 import android.graphics.*
+import android.net.Uri
 import android.util.AttributeSet
 import android.view.View
 import java.text.SimpleDateFormat
@@ -15,6 +16,7 @@ class PreviewView @JvmOverloads constructor(
     private var bgColor = Color.BLACK
     private var fontSize = 48
     private var customText = "Hello, World!"
+    private var backgroundImageUri: Uri? = null
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
 
     fun setColors(textColor: Int, bgColor: Int, fontSize: Int, customText: String) {
@@ -29,6 +31,7 @@ class PreviewView @JvmOverloads constructor(
     fun updateFontSize(size: Int) { fontSize = size; invalidate() }
     fun updateTextColor(color: Int) { textColor = color; invalidate() }
     fun updateBgColor(color: Int) { bgColor = color; invalidate() }
+    fun setBackgroundImage(uri: Uri?) { backgroundImageUri = uri; invalidate() }
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
@@ -36,7 +39,26 @@ class PreviewView @JvmOverloads constructor(
         val height = height
         if (width == 0 || height == 0) return
 
-        canvas.drawColor(bgColor)
+        // Gambar background (foto jika ada)
+        if (backgroundImageUri != null) {
+            try {
+                context.contentResolver.openInputStream(backgroundImageUri!!)?.use { inputStream ->
+                    val options = BitmapFactory.Options().apply { inSampleSize = 2 }
+                    val originalBitmap = BitmapFactory.decodeStream(inputStream, null, options)
+                    originalBitmap?.let { bmp ->
+                        val scaledBitmap = Bitmap.createScaledBitmap(bmp, width, height, true)
+                        canvas.drawBitmap(scaledBitmap, 0f, 0f, null)
+                        scaledBitmap.recycle()
+                    }
+                }
+            } catch (e: Exception) {
+                canvas.drawColor(bgColor)
+            }
+        } else {
+            canvas.drawColor(bgColor)
+        }
+
+        // Teks terminal
         paint.color = textColor
         paint.textSize = fontSize.toFloat()
         paint.typeface = Typeface.MONOSPACE
@@ -65,9 +87,9 @@ class PreviewView @JvmOverloads constructor(
             canvas.drawRect(cursorX, cursorY, cursorX + 20, cursorY + paint.textSize * 0.8f, paint)
         }
 
-        // Garis scanline statis di pratinjau (hanya contoh)
-        paint.color = Color.argb(50, 255, 255, 255)
+        // Scanline statis di pratinjau
         paint.style = Paint.Style.FILL
+        paint.color = Color.argb(50, 255, 255, 255)
         canvas.drawRect(0f, height * 0.7f, width.toFloat(), height * 0.7f + 2, paint)
     }
 }
