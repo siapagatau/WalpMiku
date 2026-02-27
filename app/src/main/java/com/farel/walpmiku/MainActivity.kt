@@ -106,21 +106,35 @@ class MainActivity : AppCompatActivity() {
             override fun onStopTrackingTouch(seekBar: SeekBar?) {}
         })
 
-        btnPickTextColor.setOnClickListener {
-            ColorPickerDialog(this, textColor) { color ->
-                textColor = color
-                previewView.updateTextColor(color)
-                savePrefs()
-            }.show()
-        }
+btnPickTextColor.setOnClickListener {
+    ColorPickerDialog(this, textColor) { color ->
+        textColor = color
+        previewView.updateTextColor(color)
 
-        btnPickBgColor.setOnClickListener {
-            ColorPickerDialog(this, bgColor) { color ->
-                bgColor = color
-                previewView.updateBgColor(color)
-                savePrefs()
-            }.show()
-        }
+        btnPickTextColor.setBackgroundColor(color)
+        btnPickTextColor.setTextColor(getContrastColor(color))
+
+        savePrefs()
+    }.show()
+}
+
+btnPickBgColor.setOnClickListener {
+    ColorPickerDialog(this, bgColor) { color ->
+        bgColor = color
+        previewView.updateBgColor(color)
+
+        btnPickBgColor.setBackgroundColor(color)
+        btnPickBgColor.setTextColor(getContrastColor(color))
+
+        savePrefs()
+    }.show()
+}
+
+btnPickTextColor.setBackgroundColor(textColor)
+btnPickTextColor.setTextColor(getContrastColor(textColor))
+
+btnPickBgColor.setBackgroundColor(bgColor)
+btnPickBgColor.setTextColor(getContrastColor(bgColor))
 
         btnPickFromGallery.setOnClickListener {
             val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -154,6 +168,14 @@ class MainActivity : AppCompatActivity() {
         handler.removeCallbacks(updateTimeRunnable)
     }
 
+private fun getContrastColor(color: Int): Int {
+    val darkness =
+        1 - (0.299 * Color.red(color) +
+             0.587 * Color.green(color) +
+             0.114 * Color.blue(color)) / 255
+    return if (darkness < 0.5) Color.BLACK else Color.WHITE
+}
+    
     private fun savePrefs() {
         getSharedPreferences("wallpaper_prefs", MODE_PRIVATE).edit().apply {
             putInt("text_color", textColor)
