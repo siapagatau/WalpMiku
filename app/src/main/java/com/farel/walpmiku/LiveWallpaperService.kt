@@ -119,13 +119,20 @@ class LiveWallpaperService : WallpaperService() {
         }
 
         private fun parseLine(line: String): String {
-            return when {
-                line.startsWith("#date") -> SimpleDateFormat("dd MMM yyyy", Locale("id")).format(Date())
-                line.startsWith("#time") -> SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
-                line.startsWith("#day") -> SimpleDateFormat("EEEE", Locale("id")).format(Date())
-                line.startsWith("@") -> line.substring(1)
-                else -> line
+            var result = line
+            result = result.replace(Regex("#date", RegexOption.IGNORE_CASE)) {
+                SimpleDateFormat("dd MMM yyyy", Locale("id")).format(Date())
             }
+            result = result.replace(Regex("#time", RegexOption.IGNORE_CASE)) {
+                SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
+            }
+            result = result.replace(Regex("#day", RegexOption.IGNORE_CASE)) {
+                SimpleDateFormat("EEEE", Locale("id")).format(Date())
+            }
+            result = result.replace(Regex("@(\\w+)")) {
+                it.groupValues[1]
+            }
+            return result
         }
     }
 }
