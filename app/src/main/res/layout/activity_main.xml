@@ -15,7 +15,7 @@
         <com.farel.walpmiku.PreviewView
             android:id="@+id/preview_view"
             android:layout_width="match_parent"
-            android:layout_height="250dp"
+            android:layout_height="350dp"   <!-- Lebih besar agar mudah dilihat -->
             android:layout_marginBottom="16dp"
             android:background="#1E1E1E"/>
 
