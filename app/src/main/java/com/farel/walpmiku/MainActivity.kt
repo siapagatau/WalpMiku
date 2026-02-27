@@ -30,6 +30,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnPickTextColor: Button
     private lateinit var btnPickBgColor: Button
     private lateinit var btnPickFromGallery: Button
+    private lateinit var btnRemoveBackground: Button  // Tombol hapus
 
     private var textColor = Color.GREEN
     private var bgColor = Color.BLACK
@@ -77,6 +78,7 @@ class MainActivity : AppCompatActivity() {
         btnPickTextColor = findViewById(R.id.btn_text_color)
         btnPickBgColor = findViewById(R.id.btn_bg_color)
         btnPickFromGallery = findViewById(R.id.btn_pick_from_gallery)
+        btnRemoveBackground = findViewById(R.id.btn_remove_background)  // Inisialisasi
 
         val prefs = getSharedPreferences("wallpaper_prefs", MODE_PRIVATE)
         textColor = prefs.getInt("text_color", Color.GREEN)
@@ -175,6 +177,14 @@ class MainActivity : AppCompatActivity() {
             } else {
                 requestPermissionLauncher.launch(permission)
             }
+        }
+
+        // Tombol hapus background
+        btnRemoveBackground.setOnClickListener {
+            selectedImageUri = null
+            previewView.setBackgroundImage(null)
+            savePrefs()
+            Toast.makeText(this, "Background dihapus", Toast.LENGTH_SHORT).show()
         }
 
         btnSetWallpaper.setOnClickListener {
