@@ -10,6 +10,7 @@ import android.os.Handler
 import android.os.Looper
 import android.text.Editable
 import android.text.TextWatcher
+import android.view.ViewGroup
 import android.widget.*
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -43,13 +44,11 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // ✅ GUNAKAN OpenDocument (SUPPORT PERSISTABLE PERMISSION)
+    // ✅ SAF picker dengan persist permission
     private val pickImageLauncher =
         registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-
             if (uri != null) {
 
-                // 🔥 Ambil persistable permission
                 contentResolver.takePersistableUriPermission(
                     uri,
                     Intent.FLAG_GRANT_READ_URI_PERMISSION
@@ -77,6 +76,12 @@ class MainActivity : AppCompatActivity() {
         btnPickFromGallery = findViewById(R.id.btn_pick_from_gallery)
         btnClearImage = findViewById(R.id.btn_clear_image)
 
+        // 🔥 FIX: Preview tidak boleh intercept touch
+        previewView.isClickable = false
+        previewView.isFocusable = false
+        previewView.isFocusableInTouchMode = false
+        previewView.setOnTouchListener { _, _ -> false }
+
         // Atur rasio preview sesuai layar
         previewView.post {
             val previewWidth = previewView.width
@@ -85,8 +90,10 @@ class MainActivity : AppCompatActivity() {
                 val ratio = displayMetrics.heightPixels.toFloat() /
                         displayMetrics.widthPixels.toFloat()
                 val desiredHeight = (previewWidth * ratio).toInt()
-                previewView.layoutParams.height = desiredHeight
-                previewView.requestLayout()
+
+                val params = previewView.layoutParams
+                params.height = desiredHeight
+                previewView.layoutParams = params
             }
         }
 
@@ -159,12 +166,31 @@ class MainActivity : AppCompatActivity() {
             override fun onStopTrackingTouch(seekBar: SeekBar?) {}
         })
 
+        btnPickTextColor.setOnClickListener {
+            ColorPickerDialog(this, textColor) { color ->
+                textColor = color
+                previewView.updateTextColor(color)
+                btnPickTextColor.setBackgroundColor(color)
+                btnPickTextColor.setTextColor(getContrastColor(color))
+                savePrefs()
+            }.show()
+        }
+
+        btnPickBgColor.setOnClickListener {
+            ColorPickerDialog(this, bgColor) { color ->
+                bgColor = color
+                previewView.updateBgColor(color)
+                btnPickBgColor.setBackgroundColor(color)
+                btnPickBgColor.setTextColor(getContrastColor(color))
+                savePrefs()
+            }.show()
+        }
+
         btnPickFromGallery.setOnClickListener {
             pickImageLauncher.launch(arrayOf("image/*"))
         }
 
         btnClearImage.setOnClickListener {
-
             selectedImageUri?.let {
                 try {
                     contentResolver.releasePersistableUriPermission(
