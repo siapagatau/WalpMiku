@@ -1,20 +1,16 @@
 package com.farel.walpmiku
 
-import android.Manifest
 import android.app.WallpaperManager
 import android.content.ComponentName
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.graphics.Color
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.text.Editable
 import android.text.TextWatcher
 import android.widget.*
-import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 
@@ -39,6 +35,7 @@ class MainActivity : AppCompatActivity() {
     private var offsetY = 0
 
     private val handler = Handler(Looper.getMainLooper())
+
     private val updateTimeRunnable = object : Runnable {
         override fun run() {
             previewView.invalidate()
@@ -46,23 +43,23 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private val pickImageLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-        if (uri != null) {
-            selectedImageUri = uri
-            previewView.setBackgroundImage(selectedImageUri)
-            savePrefs()
-        }
-    }
+    // ✅ GUNAKAN OpenDocument (SUPPORT PERSISTABLE PERMISSION)
+    private val pickImageLauncher =
+        registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
 
-    private val requestPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        if (isGranted) {
-            pickImageLauncher.launch("image/*")
-        } else {
-            Toast.makeText(this, "Izin diperlukan untuk memilih gambar", Toast.LENGTH_SHORT).show()
+            if (uri != null) {
+
+                // 🔥 Ambil persistable permission
+                contentResolver.takePersistableUriPermission(
+                    uri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+
+                selectedImageUri = uri
+                previewView.setBackgroundImage(uri)
+                savePrefs()
+            }
         }
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -80,51 +77,53 @@ class MainActivity : AppCompatActivity() {
         btnPickFromGallery = findViewById(R.id.btn_pick_from_gallery)
         btnClearImage = findViewById(R.id.btn_clear_image)
 
-        // Sesuaikan tinggi preview dengan rasio layar perangkat
+        // Atur rasio preview sesuai layar
         previewView.post {
             val previewWidth = previewView.width
             if (previewWidth > 0) {
                 val displayMetrics = resources.displayMetrics
-                val screenHeight = displayMetrics.heightPixels
-                val screenWidth = displayMetrics.widthPixels
-                val ratio = screenHeight.toFloat() / screenWidth.toFloat()
+                val ratio = displayMetrics.heightPixels.toFloat() /
+                        displayMetrics.widthPixels.toFloat()
                 val desiredHeight = (previewWidth * ratio).toInt()
-                val layoutParams = previewView.layoutParams
-                layoutParams.height = desiredHeight
-                previewView.layoutParams = layoutParams
+                previewView.layoutParams.height = desiredHeight
+                previewView.requestLayout()
             }
         }
 
         val prefs = getSharedPreferences("wallpaper_prefs", MODE_PRIVATE)
+
         textColor = prefs.getInt("text_color", Color.GREEN)
         bgColor = prefs.getInt("bg_color", Color.BLACK)
-        editText.setText(prefs.getString("custom_text", "Hello, World!"))
+
+        val savedText = prefs.getString("custom_text", "Hello, World!")!!
         val fontSize = prefs.getInt("font_size", 48)
-        seekBarFont.progress = fontSize
-        textFontSize.text = "Font size: $fontSize"
 
         offsetX = prefs.getInt("offset_x", 0)
         offsetY = prefs.getInt("offset_y", 0)
+
+        val uriString = prefs.getString("background_image_uri", null)
+        selectedImageUri = uriString?.let { Uri.parse(it) }
+
+        editText.setText(savedText)
+        seekBarFont.progress = fontSize
+        textFontSize.text = "Font size: $fontSize"
         seekBarOffsetX.progress = offsetX + 500
         seekBarOffsetY.progress = offsetY + 500
 
-        val uriString = prefs.getString("background_image_uri", null)
-        selectedImageUri = if (uriString != null) Uri.parse(uriString) else null
-
-        previewView.setColors(textColor, bgColor, fontSize, editText.text.toString())
+        previewView.setColors(textColor, bgColor, fontSize, savedText)
         previewView.setBackgroundImage(selectedImageUri)
         previewView.setOffset(offsetX, offsetY)
 
-        // Update warna tombol
         btnPickTextColor.setBackgroundColor(textColor)
         btnPickTextColor.setTextColor(getContrastColor(textColor))
+
         btnPickBgColor.setBackgroundColor(bgColor)
         btnPickBgColor.setTextColor(getContrastColor(bgColor))
 
         editText.addTextChangedListener(object : TextWatcher {
             override fun afterTextChanged(s: Editable?) {
-                savePrefs()
                 previewView.updateText(s.toString())
+                savePrefs()
             }
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
@@ -160,41 +159,21 @@ class MainActivity : AppCompatActivity() {
             override fun onStopTrackingTouch(seekBar: SeekBar?) {}
         })
 
-        btnPickTextColor.setOnClickListener {
-            ColorPickerDialog(this, textColor) { color ->
-                textColor = color
-                previewView.updateTextColor(color)
-                btnPickTextColor.setBackgroundColor(color)
-                btnPickTextColor.setTextColor(getContrastColor(color))
-                savePrefs()
-            }.show()
-        }
-
-        btnPickBgColor.setOnClickListener {
-            ColorPickerDialog(this, bgColor) { color ->
-                bgColor = color
-                previewView.updateBgColor(color)
-                btnPickBgColor.setBackgroundColor(color)
-                btnPickBgColor.setTextColor(getContrastColor(color))
-                savePrefs()
-            }.show()
-        }
-
         btnPickFromGallery.setOnClickListener {
-            val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                Manifest.permission.READ_MEDIA_IMAGES
-            } else {
-                Manifest.permission.READ_EXTERNAL_STORAGE
-            }
-
-            if (checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED) {
-                pickImageLauncher.launch("image/*")
-            } else {
-                requestPermissionLauncher.launch(permission)
-            }
+            pickImageLauncher.launch(arrayOf("image/*"))
         }
 
         btnClearImage.setOnClickListener {
+
+            selectedImageUri?.let {
+                try {
+                    contentResolver.releasePersistableUriPermission(
+                        it,
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    )
+                } catch (_: Exception) {}
+            }
+
             selectedImageUri = null
             previewView.setBackgroundImage(null)
             savePrefs()
@@ -202,8 +181,10 @@ class MainActivity : AppCompatActivity() {
 
         btnSetWallpaper.setOnClickListener {
             val intent = Intent(WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER)
-            intent.putExtra(WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT,
-                ComponentName(this, LiveWallpaperService::class.java))
+            intent.putExtra(
+                WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT,
+                ComponentName(this, LiveWallpaperService::class.java)
+            )
             startActivity(intent)
         }
     }
@@ -219,7 +200,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun getContrastColor(color: Int): Int {
-        val darkness = 1 - (0.299 * Color.red(color) + 0.587 * Color.green(color) + 0.114 * Color.blue(color)) / 255
+        val darkness = 1 - (0.299 * Color.red(color) +
+                0.587 * Color.green(color) +
+                0.114 * Color.blue(color)) / 255
         return if (darkness < 0.5) Color.BLACK else Color.WHITE
     }
 
