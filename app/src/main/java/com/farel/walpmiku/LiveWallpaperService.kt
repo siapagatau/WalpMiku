@@ -75,68 +75,43 @@ class LiveWallpaperService : WallpaperService() {
             } ?: false
         }
 
-        private fun loadBackground() {
-            val prefs = getSharedPreferences("wallpaper_prefs", MODE_PRIVATE)
-            val uriString = prefs.getString("background_image_uri", null)
+private fun loadBackground() {
+    val prefs = getSharedPreferences("wallpaper_prefs", MODE_PRIVATE)
+    val uriString = prefs.getString("background_image_uri", null)
 
-            // Dapatkan ukuran surface terbaru
-            val width = surfaceHolder.surfaceFrame.width()
-            val height = surfaceHolder.surfaceFrame.height()
-            if (width <= 0 || height <= 0) {
-                // Surface belum siap, tunggu nanti
-                return
-            }
+    val width = surfaceWidth
+    val height = surfaceHeight
+    if (width <= 0 || height <= 0) return
 
-            // Jika URI berubah, hapus bitmap lama
-            if (currentUriString != uriString) {
-                backgroundBitmap?.recycle()
-                backgroundBitmap = null
-                currentUriString = uriString
-            }
+    if (uriString == null) return
 
-            // Jika tidak ada URI, set backgroundBitmap ke null
-            if (uriString == null) {
-                backgroundBitmap?.recycle()
-                backgroundBitmap = null
-                return
-            }
+    if (backgroundBitmap != null &&
+        backgroundBitmap!!.width == width &&
+        backgroundBitmap!!.height == height) {
+        return
+    }
 
-            // Jika bitmap sudah ada dan ukurannya cocok, tidak perlu muat ulang
-            if (backgroundBitmap != null &&
-                backgroundBitmap!!.width == width &&
-                backgroundBitmap!!.height == height) {
-                return
-            }
+    try {
+        val uri = Uri.parse(uriString)
+        contentResolver.openInputStream(uri)?.use { input ->
+            val original = BitmapFactory.decodeStream(input) ?: return
+            val scale = max(width.toFloat() / original.width, height.toFloat() / original.height)
+            val scaledWidth = (original.width * scale).toInt()
+            val scaledHeight = (original.height * scale).toInt()
 
-            // Muat bitmap baru
-            try {
-                val uri = Uri.parse(uriString)
-                contentResolver.openInputStream(uri)?.use { input ->
-                    val original = BitmapFactory.decodeStream(input)
-                    original?.let { bmp ->
-                        // Center crop
-                        val scale = max(width.toFloat() / bmp.width, height.toFloat() / bmp.height)
-                        val scaledWidth = (bmp.width * scale).toInt()
-                        val scaledHeight = (bmp.height * scale).toInt()
-                        val scaledBitmap = Bitmap.createScaledBitmap(bmp, scaledWidth, scaledHeight, true)
-                        val left = (scaledWidth - width) / 2
-                        val top = (scaledHeight - height) / 2
-                        val croppedBitmap = Bitmap.createBitmap(scaledBitmap, left, top, width, height)
+            val scaledBitmap = Bitmap.createScaledBitmap(original, scaledWidth, scaledHeight, true)
+            val left = (scaledWidth - width) / 2
+            val top = (scaledHeight - height) / 2
 
-                        // Ganti bitmap lama
-                        backgroundBitmap?.recycle()
-                        backgroundBitmap = croppedBitmap
+            backgroundBitmap = Bitmap.createBitmap(scaledBitmap, left, top, width, height)
 
-                        scaledBitmap.recycle()
-                        bmp.recycle()
-                    }
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-                backgroundBitmap?.recycle()
-                backgroundBitmap = null
-            }
+            scaledBitmap.recycle()
+            original.recycle()
         }
+    } catch (e: Exception) {
+        e.printStackTrace()
+    }
+}
 
         private fun drawFrame() {
             val holder = surfaceHolder
