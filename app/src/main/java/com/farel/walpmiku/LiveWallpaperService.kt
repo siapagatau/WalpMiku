@@ -15,15 +15,19 @@ import java.util.*
 
 class LiveWallpaperService : WallpaperService() {
 
+    // Simpan bitmap di level service agar tidak mudah hilang
+    private var cachedBackgroundBitmap: Bitmap? = null
+    private var cachedUriString: String? = null
+    private var cachedWidth: Int = 0
+    private var cachedHeight: Int = 0
+
     override fun onCreateEngine(): Engine = TerminalEngine()
 
     inner class TerminalEngine : Engine() {
 
         private val handler = Handler(Looper.getMainLooper())
-        private var backgroundBitmap: Bitmap? = null
         private var batteryLevel: Int = 0
         private var isCharging: Boolean = false
-        private var currentUriString: String? = null // menyimpan URI terakhir
 
         private val updateTime = object : Runnable {
             override fun run() {
@@ -35,23 +39,80 @@ class LiveWallpaperService : WallpaperService() {
 
         override fun onVisibilityChanged(visible: Boolean) {
             if (visible) {
-                loadBackground() // muat ulang setiap kali terlihat
+                // Pastikan background terload (jika perlu)
+                ensureBackgroundLoaded()
                 handler.post(updateTime)
             } else {
                 handler.removeCallbacks(updateTime)
+                // Jangan recycle bitmap saat tidak terlihat
             }
         }
 
         override fun onSurfaceDestroyed(holder: SurfaceHolder) {
             super.onSurfaceDestroyed(holder)
             handler.removeCallbacks(updateTime)
-            // Jangan recycle di sini – biarkan sampai benar‑benar diperlukan
+            // Jangan recycle di sini, simpan untuk digunakan lagi
         }
 
         override fun onSurfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
             super.onSurfaceChanged(holder, format, width, height)
-            // Jika ukuran berubah, muat ulang background agar sesuai
-            loadBackground()
+            // Jika ukuran berubah, muat ulang background (akan pakai cache jika URI sama)
+            ensureBackgroundLoaded()
+        }
+
+        private fun ensureBackgroundLoaded() {
+            val prefs = getSharedPreferences("wallpaper_prefs", MODE_PRIVATE)
+            val uriString = prefs.getString("background_image_uri", null)
+            val width = surfaceHolder.surfaceFrame.width()
+            val height = surfaceHolder.surfaceFrame.height()
+            if (width <= 0 || height <= 0) return
+
+            // Cek apakah cache masih valid
+            if (cachedUriString == uriString && cachedWidth == width && cachedHeight == height && cachedBackgroundBitmap != null) {
+                // Cache cocok, tidak perlu load ulang
+                return
+            }
+
+            // Jika URI berubah atau null, hapus cache lama
+            if (cachedUriString != uriString) {
+                cachedBackgroundBitmap?.recycle()
+                cachedBackgroundBitmap = null
+                cachedUriString = uriString
+            }
+
+            if (uriString == null) {
+                cachedBackgroundBitmap = null
+                return
+            }
+
+            // Muat bitmap baru
+            try {
+                val uri = Uri.parse(uriString)
+                contentResolver.openInputStream(uri)?.use { input ->
+                    val original = BitmapFactory.decodeStream(input)
+                    original?.let { bmp ->
+                        val scale = max(width.toFloat() / bmp.width, height.toFloat() / bmp.height)
+                        val scaledWidth = (bmp.width * scale).toInt()
+                        val scaledHeight = (bmp.height * scale).toInt()
+                        val scaledBitmap = Bitmap.createScaledBitmap(bmp, scaledWidth, scaledHeight, true)
+                        val left = (scaledWidth - width) / 2
+                        val top = (scaledHeight - height) / 2
+                        val croppedBitmap = Bitmap.createBitmap(scaledBitmap, left, top, width, height)
+
+                        // Simpan ke cache
+                        cachedBackgroundBitmap?.recycle()
+                        cachedBackgroundBitmap = croppedBitmap
+                        cachedWidth = width
+                        cachedHeight = height
+
+                        scaledBitmap.recycle()
+                        bmp.recycle()
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                cachedBackgroundBitmap = null
+            }
         }
 
         private fun updateBatteryInfo() {
@@ -66,63 +127,6 @@ class LiveWallpaperService : WallpaperService() {
                 val status = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1)
                 status == BatteryManager.BATTERY_STATUS_CHARGING || status == BatteryManager.BATTERY_STATUS_FULL
             } ?: false
-        }
-
-        private fun loadBackground() {
-            val prefs = getSharedPreferences("wallpaper_prefs", MODE_PRIVATE)
-            val uriString = prefs.getString("background_image_uri", null)
-
-            val width = surfaceHolder.surfaceFrame.width()
-            val height = surfaceHolder.surfaceFrame.height()
-            if (width <= 0 || height <= 0) return
-
-            // Jika URI berubah atau null, hapus bitmap lama
-            if (currentUriString != uriString) {
-                backgroundBitmap?.recycle()
-                backgroundBitmap = null
-                currentUriString = uriString
-            }
-
-            // Jika tidak ada URI, langsung keluar
-            if (uriString == null) {
-                backgroundBitmap = null
-                return
-            }
-
-            // Jika bitmap sudah ada dan ukurannya cocok, tidak perlu muat ulang
-            if (backgroundBitmap != null &&
-                backgroundBitmap!!.width == width &&
-                backgroundBitmap!!.height == height) {
-                return
-            }
-
-            // Muat bitmap baru
-            try {
-                val uri = Uri.parse(uriString)
-                contentResolver.openInputStream(uri)?.use { input ->
-                    val original = BitmapFactory.decodeStream(input)
-                    original?.let { bmp ->
-                        // Center crop
-                        val scale = max(width.toFloat() / bmp.width, height.toFloat() / bmp.height)
-                        val scaledWidth = (bmp.width * scale).toInt()
-                        val scaledHeight = (bmp.height * scale).toInt()
-                        val scaledBitmap = Bitmap.createScaledBitmap(bmp, scaledWidth, scaledHeight, true)
-                        val left = (scaledWidth - width) / 2
-                        val top = (scaledHeight - height) / 2
-                        val croppedBitmap = Bitmap.createBitmap(scaledBitmap, left, top, width, height)
-
-                        // Ganti bitmap lama
-                        backgroundBitmap?.recycle()
-                        backgroundBitmap = croppedBitmap
-
-                        scaledBitmap.recycle()
-                        bmp.recycle()
-                    }
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-                backgroundBitmap = null
-            }
         }
 
         private fun drawFrame() {
@@ -148,10 +152,9 @@ class LiveWallpaperService : WallpaperService() {
             val offsetX = prefs.getInt("offset_x", 0)
             val offsetY = prefs.getInt("offset_y", 0)
 
-            // Background
-            if (backgroundBitmap != null) {
-                canvas.drawBitmap(backgroundBitmap!!, 0f, 0f, null)
-                // overlay gelap agar teks terbaca
+            // Background pakai cache
+            if (cachedBackgroundBitmap != null) {
+                canvas.drawBitmap(cachedBackgroundBitmap!!, 0f, 0f, null)
                 val overlay = Paint().apply { color = Color.argb(100, 0, 0, 0) }
                 canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), overlay)
             } else {
@@ -195,5 +198,12 @@ class LiveWallpaperService : WallpaperService() {
             }
             return result
         }
+    }
+
+    // Saat service dimatikan, recycle bitmap
+    override fun onDestroy() {
+        cachedBackgroundBitmap?.recycle()
+        cachedBackgroundBitmap = null
+        super.onDestroy()
     }
 }
